@@ -1,6 +1,9 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
+import { Building2, Search } from "lucide-react";
+
 import SearchInput from "@/shared/components/search";
 import Pagination from "@/shared/components/pagination";
 import { useGetDealershipsQuery } from "@/features/dealerships/dealership.api";
@@ -12,17 +15,24 @@ export default function DealershipList() {
 
   const pageSize = 5;
 
-  const { data, error, isLoading, isFetching, refetch } =
-    useGetDealershipsQuery({ pageNumber, pageSize });
+  const {
+    data,
+    error,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useGetDealershipsQuery({ pageNumber, pageSize });
+
+  const normalizedKeyword = keyword.trim().toLowerCase();
 
   const filteredDealerships = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase();
+    const dealerships = data?.items ?? [];
 
     if (!normalizedKeyword) {
-      return data?.items ?? [];
+      return dealerships;
     }
 
-    return (data?.items ?? []).filter((dealership) => {
+    return dealerships.filter((dealership) => {
       const searchableFields = [
         dealership.name,
         dealership.address,
@@ -31,10 +41,10 @@ export default function DealershipList() {
       ];
 
       return searchableFields.some((field) =>
-        field?.toLowerCase().includes(normalizedKeyword)
+        field?.toLowerCase().includes(normalizedKeyword),
       );
     });
-  }, [data?.items, keyword]);
+  }, [data?.items, normalizedKeyword]);
 
   const handleSearch = (value: string) => {
     setKeyword(value);
@@ -43,19 +53,32 @@ export default function DealershipList() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-16">
-        <span className="loading loading-spinner loading-lg" />
+      <div className="flex min-h-60 items-center justify-center">
+        <span className="loading loading-spinner loading-lg text-primary" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="alert alert-error">
-        <span>Failed to load dealerships.</span>
-        <button className="btn btn-sm" onClick={() => refetch()}>
-          Retry
-        </button>
+      <div className="rounded-xl border border-error/30 bg-base-100 p-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-error">
+              Failed to load dealerships
+            </h2>
+            <p className="mt-1 text-sm text-base-content/60">
+              Please check your connection and try again.
+            </p>
+          </div>
+
+          <button
+            className="btn btn-outline btn-error btn-sm"
+            onClick={() => refetch()}
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -63,35 +86,55 @@ export default function DealershipList() {
   return (
     <section className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dealerships</h1>
-          <p className="text-sm text-base-content/60">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Building2 size={21} />
+            </div>
+
+            <h1 className="text-2xl font-bold tracking-tight text-base-content">
+              Dealerships
+            </h1>
+          </div>
+
+          <p className="mt-2 text-sm text-base-content/60">
             Explore and manage dealership locations.
           </p>
         </div>
 
-        <SearchInput
-          value={keyword}
-          onChange={handleSearch}
-          placeholder="Search dealerships..."
-        />
+        <div className="w-full lg:max-w-sm">
+          <SearchInput
+            value={keyword}
+            onChange={handleSearch}
+            placeholder="Search dealerships..."
+          />
+        </div>
       </div>
 
-      {/* Result count */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-base-content/60">
-          {keyword.trim()
-            ? `${filteredDealerships.length} search results`
-            : `${data?.totalCount ?? 0} dealerships`}
-        </span>
+      {/* Result Summary */}
+      <div className="flex min-h-8 items-center justify-between border-b border-base-300 pb-3">
+        <div className="flex items-center gap-2 text-sm text-base-content/70">
+          {normalizedKeyword ? (
+            <>
+              <Search size={15} />
+              <span>
+                {filteredDealerships.length} matching dealerships on this page
+              </span>
+            </>
+          ) : (
+            <span>
+              {data?.totalCount ?? 0} dealerships
+            </span>
+          )}
+        </div>
 
         {isFetching && (
-          <span className="loading loading-spinner loading-sm" />
+          <span className="loading loading-spinner loading-sm text-primary" />
         )}
       </div>
 
-      {/* Dealership list */}
+      {/* Dealership Cards */}
       {filteredDealerships.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredDealerships.map((dealership) => (
@@ -102,32 +145,57 @@ export default function DealershipList() {
           ))}
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-base-300 py-16 text-center">
-          <h3 className="font-semibold">
-            {keyword.trim()
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-base-300 bg-base-100 px-6 py-16 text-center">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            {normalizedKeyword ? (
+              <Search size={25} />
+            ) : (
+              <Building2 size={25} />
+            )}
+          </div>
+
+          <h3 className="font-semibold text-base-content">
+            {normalizedKeyword
               ? "No matching dealerships"
               : "No dealerships found"}
           </h3>
 
-          <p className="mt-1 text-sm text-base-content/60">
-            {keyword.trim()
+          <p className="mt-2 max-w-sm text-sm text-base-content/60">
+            {normalizedKeyword
               ? "Try searching with a different keyword."
-              : "There are no dealerships available."}
+              : "There are currently no dealerships available."}
           </p>
+
+          {normalizedKeyword && (
+            <button
+              className="btn btn-outline btn-primary btn-sm mt-5"
+              onClick={() => handleSearch("")}
+            >
+              Clear search
+            </button>
+          )}
         </div>
       )}
 
       {/* Pagination */}
-      {!keyword.trim() && data && (
-        <Pagination
-          pageNumber={data.pageNumber}
-          totalPages={data.totalPages}
-          pageSize={data.pageSize}
-          totalCount={data.totalCount}
-          hasPreviousPage={data.pageNumber > 1}
-          hasNextPage={data.pageNumber < data.totalPages}
-          onPageChange={setPageNumber}
-        />
+      {!normalizedKeyword && data && data.totalPages > 1 && (
+        <div className="flex flex-col gap-4 border-t border-base-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-base-content/60">
+            Page {data.pageNumber} of {data.totalPages}
+            <span className="mx-2">—</span>
+            Total {data.totalCount} items
+          </p>
+
+          <Pagination
+            pageNumber={data.pageNumber}
+            totalPages={data.totalPages}
+            pageSize={data.pageSize}
+            totalCount={data.totalCount}
+            hasPreviousPage={data.pageNumber > 1}
+            hasNextPage={data.pageNumber < data.totalPages}
+            onPageChange={setPageNumber}
+          />
+        </div>
       )}
     </section>
   );
