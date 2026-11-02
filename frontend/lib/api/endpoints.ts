@@ -5,9 +5,10 @@ export const API_ENDPOINTS = {
   },
 
   DEALERSHIPS: {
-    BASE: "dealerships",
-    BY_ID: (dealershipId: string) =>
-      `dealerships/${dealershipId}`,
+    BASE: "/dealerships",
+    BY_ID: (dealershipId: string) => `/dealerships/${dealershipId}`,
+    TECHNICIANS: (dealershipId: string) =>
+      `/dealerships/${dealershipId}/technicians`,
   },
 
   SERVICE_BAYS: {
