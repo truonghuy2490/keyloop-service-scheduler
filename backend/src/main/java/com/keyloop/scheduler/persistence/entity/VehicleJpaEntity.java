@@ -1,15 +1,17 @@
 package com.keyloop.scheduler.persistence.entity;
 
+import com.keyloop.scheduler.persistence.entity.common.SoftDeletedAuditableJpaEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.util.UUID;
 
-import com.keyloop.scheduler.persistence.entity.common.SoftDeletedAuditableJpaEntity;
+import java.util.UUID;
 
 @Entity
 @Table(name = "vehicle")
 public class VehicleJpaEntity extends SoftDeletedAuditableJpaEntity {
+
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
 
@@ -25,21 +27,84 @@ public class VehicleJpaEntity extends SoftDeletedAuditableJpaEntity {
     @Column(name = "model_year")
     private Short modelYear;
 
-    public VehicleJpaEntity() {}
+    protected VehicleJpaEntity() {
+    }
 
-    public UUID getCustomerId() { return customerId; }
-    public void setCustomerId(UUID customerId) { this.customerId = customerId; }
+    private VehicleJpaEntity(Builder builder) {
+        super(builder);
 
-    public String getRegistrationNumber() { return registrationNumber; }
-    public void setRegistrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; }
+        this.customerId = builder.customerId;
+        this.registrationNumber = builder.registrationNumber;
+        this.make = builder.make;
+        this.model = builder.model;
+        this.modelYear = builder.modelYear;
+    }
 
-    public String getMake() { return make; }
-    public void setMake(String make) { this.make = make; }
+    public static Builder builder() {
+        return new Builder();
+    }
 
-    public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
+    public static class Builder
+            extends SoftDeletedAuditableJpaEntity.Builder<Builder> {
 
-    public Short getModelYear() { return modelYear; }
-    public void setModelYear(Short modelYear) { this.modelYear = modelYear; }
+        private UUID customerId;
+        private String registrationNumber;
+        private String make;
+        private String model;
+        private Short modelYear;
 
+        public Builder customerId(UUID customerId) {
+            this.customerId = customerId;
+            return this;
+        }
+
+        public Builder registrationNumber(String registrationNumber) {
+            this.registrationNumber = registrationNumber;
+            return this;
+        }
+
+        public Builder make(String make) {
+            this.make = make;
+            return this;
+        }
+
+        public Builder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public Builder modelYear(Short modelYear) {
+            this.modelYear = modelYear;
+            return this;
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+
+        public VehicleJpaEntity build() {
+            return new VehicleJpaEntity(this);
+        }
+    }
+
+    public UUID getCustomerId() {
+        return customerId;
+    }
+
+    public String getRegistrationNumber() {
+        return registrationNumber;
+    }
+
+    public String getMake() {
+        return make;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public Short getModelYear() {
+        return modelYear;
+    }
 }

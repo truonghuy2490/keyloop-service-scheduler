@@ -12,10 +12,14 @@ public class DatabaseSeeder {
     @Bean
     ApplicationRunner seedDatabase(
         JdbcTemplate jdbc,
-        DealershipSeeder dealershipSeeder
+        DealershipSeeder dealershipSeeder,
+        VehicleSeeder vehicleSeeder,
+        CustomerSeeder customerSeeder
     ) {
         return args -> {
             dealershipSeeder.seed(jdbc);
+            customerSeeder.seed(jdbc);
+            vehicleSeeder.seed(jdbc);
 
             System.out.println("Database seed completed.");
         };
