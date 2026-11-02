@@ -63,6 +63,7 @@ After successful validation, create a persistent appointment record associating 
 | GET | `/api/v1/vehicles` | View a customer's vehicles | ✅ Completed |
 | GET | `/api/v1/service-bay` | List available dealership's servicebay | ✅ Completed  |
 | GET | `/api/v1/dealership/{id}/technicians` | List dealership's technicians | ✅ Completed |
+| GET | `/api/v1/technicians/{id}` | View a technician details | ✅ Completed |
 | POST | `/api/v1/appointments` | Create an appointment | Planned |
 | GET | `/api/v1/appointments/{id}` | Get appointment details | Planned |
 

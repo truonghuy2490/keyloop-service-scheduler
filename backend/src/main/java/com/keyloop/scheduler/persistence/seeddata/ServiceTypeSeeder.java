@@ -78,6 +78,66 @@ public class ServiceTypeSeeder {
                     'Engine Tune-up',
                     'Inspect and service engine components for optimal performance.',
                     120
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000011',
+                    'Transmission Service',
+                    'Inspect transmission fluid and service transmission components.',
+                    90
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000012',
+                    'Coolant Flush',
+                    'Drain and replace engine coolant to maintain cooling performance.',
+                    60
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000013',
+                    'Spark Plug Replacement',
+                    'Replace worn spark plugs and inspect ignition components.',
+                    60
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000014',
+                    'Timing Belt Replacement',
+                    'Inspect and replace the engine timing belt.',
+                    180
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000015',
+                    'Suspension Inspection',
+                    'Inspect shocks, struts, and suspension components.',
+                    60
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000016',
+                    'Exhaust System Inspection',
+                    'Inspect exhaust pipes, muffler, and emission components.',
+                    45
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000017',
+                    'Fuel System Cleaning',
+                    'Clean fuel injectors and inspect fuel delivery components.',
+                    90
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000018',
+                    'Power Steering Service',
+                    'Inspect power steering fluid and steering components.',
+                    60
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000019',
+                    'Clutch Inspection',
+                    'Inspect clutch operation and related transmission components.',
+                    60
+                ),
+                (
+                    '30000000-0000-0000-0000-000000000020',
+                    'Hybrid Battery Inspection',
+                    'Inspect hybrid battery health and electrical connections.',
+                    90
                 )
 
             ON CONFLICT (id) DO NOTHING

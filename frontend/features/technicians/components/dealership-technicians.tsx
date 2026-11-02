@@ -1,6 +1,8 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Wrench,
@@ -18,6 +20,8 @@ interface DealershipTechniciansProps {
 export default function DealershipTechnicians({
   dealershipId,
 }: DealershipTechniciansProps) {
+  const router = useRouter();
+
   const [selectedServiceTypeId, setSelectedServiceTypeId] =
     useState("all");
 
@@ -70,11 +74,14 @@ export default function DealershipTechnicians({
     );
   }, [data, selectedServiceTypeId]);
 
-  const activeCount = data?.items.filter(
-    (technician) => technician.active,
-  ).length ?? 0;
+  const activeCount =
+    data?.items.filter((technician) => technician.active).length ?? 0;
 
   const inactiveCount = (data?.totalItems ?? 0) - activeCount;
+
+  function handleTechnicianClick(technicianId: string) {
+    router.push(`/technicians/${technicianId}`);
+  }
 
   if (isLoading) {
     return (
@@ -99,6 +106,7 @@ export default function DealershipTechnicians({
           </div>
 
           <button
+            type="button"
             className="btn btn-outline btn-error btn-sm"
             onClick={() => refetch()}
           >
@@ -179,7 +187,7 @@ export default function DealershipTechnicians({
         </div>
       </div>
 
-      {/* Technician list */}
+      {/* Technician Grid */}
       <div className="p-5">
         {data.totalItems === 0 ? (
           <div className="rounded-xl border border-dashed border-base-300 py-12 text-center">
@@ -212,6 +220,7 @@ export default function DealershipTechnicians({
             </p>
 
             <button
+              type="button"
               className="btn btn-ghost btn-sm mt-3"
               onClick={() => setSelectedServiceTypeId("all")}
             >
@@ -223,7 +232,19 @@ export default function DealershipTechnicians({
             {filteredTechnicians.map((technician) => (
               <div
                 key={technician.id}
-                className="rounded-xl border border-base-300 bg-base-100 p-5 transition-colors hover:border-primary/30"
+                role="link"
+                tabIndex={0}
+                aria-label={`View details for ${technician.fullName}`}
+                onClick={() =>
+                  handleTechnicianClick(technician.id)
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleTechnicianClick(technician.id);
+                  }
+                }}
+                className="cursor-pointer rounded-xl border border-base-300 bg-base-100 p-5 transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
                 {/* Technician information */}
                 <div className="flex items-start justify-between gap-3">
@@ -300,3 +321,4 @@ export default function DealershipTechnicians({
     </section>
   );
 }
+

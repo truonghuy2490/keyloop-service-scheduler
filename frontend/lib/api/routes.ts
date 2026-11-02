@@ -7,6 +7,10 @@ export const APP_ROUTES = {
   SERVICE_TYPES: "/service-types",
   SERVICE_BAYS: "/service-bays",
   CUSTOMERS: "/customers",
+
+  TECHNICIANS: "/technicians",
+  TECHNICIAN_DETAILS: (technicianId: string) =>
+    `/technicians/${technicianId}`,
 } as const;
 
 export const APP_LABELS: Record<
@@ -46,5 +50,10 @@ export const APP_LABELS: Record<
   [APP_ROUTES.CUSTOMERS]: {
     parentLabel: "Customers",
     itemLabel: "Customer",
+  },
+
+  [APP_ROUTES.TECHNICIANS]: {
+    parentLabel: "Technicians",
+    itemLabel: "Technician",
   },
 };

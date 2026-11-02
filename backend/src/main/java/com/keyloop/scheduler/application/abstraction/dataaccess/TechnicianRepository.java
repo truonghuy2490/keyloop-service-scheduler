@@ -1,13 +1,18 @@
 package com.keyloop.scheduler.application.abstraction.dataaccess;
 
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TechnicianRepository {
 
-    List<TechnicianDetailsData> findDetailsByDealershipId(UUID dealershipId);
+    List<TechnicianData> findDetailsByDealershipId(UUID dealershipId);
     
-    public record TechnicianDetailsData(
+    public record TechnicianData(
             UUID dealershipId,
             String dealershipName,
             UUID technicianId,
@@ -15,6 +20,49 @@ public interface TechnicianRepository {
             boolean active,
             UUID serviceTypeId,
             String serviceName
+    ) {
+    }
+
+    Optional<TechnicianDetailsData> findDetailsByTechnicianId(
+            UUID technicianId
+    );
+
+    record TechnicianDetailsData(
+            UUID id,
+            String fullName,
+            boolean active,
+            UUID dealershipId,
+            String dealershipName,
+            Instant createdAt,
+            Instant updatedAt,
+            List<QualificationData> qualifications,
+            List<WorkingHoursData> workingHours,
+            List<DateOverrideData> dateOverrides
+    ) {
+    }
+
+    record QualificationData(
+            UUID serviceTypeId,
+            String name,
+            String description,
+            Integer durationMinutes,
+            Instant qualifiedAt
+    ) {
+    }
+
+    record WorkingHoursData(
+            DayOfWeek dayOfWeek,
+            LocalTime startsAt,
+            LocalTime endsAt
+    ) {
+    }
+
+    record DateOverrideData(
+            LocalDate workDate,
+            boolean isUnavailable,
+            LocalTime startsAt,
+            LocalTime endsAt,
+            String reason
     ) {
     }
 }

@@ -14,7 +14,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository;
-import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository.TechnicianDetailsData;
+import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository.TechnicianData;
 import com.keyloop.scheduler.application.common.result.ErrorDetails;
 import com.keyloop.scheduler.application.common.result.Result;
 
@@ -63,7 +63,7 @@ public class Handler {
             UUID dealershipId = UUID.fromString(request.dealershipId());
 
             // 2. Retrieve dealership and technicians
-            List<TechnicianDetailsData> rows =
+            List<TechnicianData> rows =
                     technicianRepository.findDetailsByDealershipId(dealershipId);
 
             if (rows.isEmpty()) {
@@ -82,12 +82,12 @@ public class Handler {
             }
 
             // 3. Group technicians and qualifications
-            TechnicianDetailsData dealership = rows.get(0);
+            TechnicianData dealership = rows.get(0);
 
             Map<UUID, TechnicianAccumulator> technicianMap =
                     new LinkedHashMap<>();
 
-            for (TechnicianDetailsData row : rows) {
+            for (TechnicianData row : rows) {
 
                 // Skip when dealership has no technicians
                 if (row.technicianId() == null) {
