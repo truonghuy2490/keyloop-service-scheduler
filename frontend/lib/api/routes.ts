@@ -5,6 +5,7 @@ export const APP_ROUTES = {
   APPOINTMENTS: "/appointments",
   VEHICLES: "/vehicles",
   SERVICE_TYPES: "/service-types",
+  SERVICE_BAYS: "/service-bays",
   CUSTOMERS: "/customers",
 } as const;
 
@@ -35,6 +36,11 @@ export const APP_LABELS: Record<
   [APP_ROUTES.SERVICE_TYPES]: {
     parentLabel: "Service Types",
     itemLabel: "Service Type",
+  },
+
+  [APP_ROUTES.SERVICE_BAYS]: {
+    parentLabel: "Service Bays",
+    itemLabel: "Service Bay",
   },
 
   [APP_ROUTES.CUSTOMERS]: {
