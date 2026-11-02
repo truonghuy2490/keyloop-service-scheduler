@@ -1,15 +1,15 @@
-
 import type { Metadata } from "next";
+
 import "./globals.css";
-import ReduxProvider from "@/lib/redux/providers";
+import RootLayoutContent from "@/features/shared/components/layout/RootLayoutContent";
+import StoreProvider from "./StoreProvider";
 
 export const metadata: Metadata = {
   title: {
     default: "Service Scheduler | Keyloop",
     template: "%s | Service Scheduler",
   },
-  description:
-    "Automotive Service Appointment Scheduling Platform",
+  description: "Automotive Service Appointment Scheduling Platform",
 };
 
 export default function RootLayout({
@@ -19,8 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-theme="keyloop">
-      <body>
-        <ReduxProvider>{children}</ReduxProvider>
+      <body className="min-h-screen bg-base-200 text-base-content">
+        <StoreProvider>
+          <RootLayoutContent>{children}</RootLayoutContent>
+        </StoreProvider>
       </body>
     </html>
   );

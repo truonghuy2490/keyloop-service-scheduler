@@ -13,11 +13,16 @@ export const API_ENDPOINTS = {
 
   VEHICLES: {
     BASE: "/vehicles",
-    BY_ID: (id: string) => `/vehicles/${id}`,
   },
 
   SERVICE_TYPES: {
     BASE: "/service-types",
     BY_ID: (id: string) => `/service-types/${id}`,
   },
+
+  CUSTOMERS: {
+    BASE: "/customers",
+    BY_ID: (customerId: string) => `/customers/${customerId}`,
+  },
+  
 } as const;

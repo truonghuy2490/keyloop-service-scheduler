@@ -4,10 +4,10 @@
 import { useMemo, useState } from "react";
 import { Building2, Search } from "lucide-react";
 
-import SearchInput from "@/shared/components/search";
-import Pagination from "@/shared/components/pagination";
 import { useGetDealershipsQuery } from "@/features/dealerships/dealership.api";
 import DealershipCard from "./dealership-card";
+import Pagination from "@/features/shared/components/ui/Pagination";
+import SearchInput from "@/features/shared/components/ui/Search";
 
 export default function DealershipList() {
   const [pageNumber, setPageNumber] = useState(1);
