@@ -18,7 +18,10 @@ public class DatabaseSeeder {
         ServiceBaySeeder serviceBaySeeder,
         ServiceTypeSeeder serviceTypeSeeder,
         TechnicianSeeder technicianSeeder,
-        TechnicianQualificationSeeder technicianQualificationSeeder
+        TechnicianQualificationSeeder technicianQualificationSeeder,
+        TechnicianWorkingHoursSeeder technicianWorkingHoursSeeder,
+        TechnicianDateOverrideSeeder technicianDateOverrideSeeder
+
     ) {
         return args -> {
             dealershipSeeder.seed(jdbc);
@@ -28,6 +31,8 @@ public class DatabaseSeeder {
             serviceTypeSeeder.seed(jdbc);
             technicianSeeder.seed(jdbc);
             technicianQualificationSeeder.seed(jdbc);
+            technicianWorkingHoursSeeder.seed(jdbc);
+            technicianDateOverrideSeeder.seed(jdbc);
             
             System.out.println("Database seed completed.");
         };

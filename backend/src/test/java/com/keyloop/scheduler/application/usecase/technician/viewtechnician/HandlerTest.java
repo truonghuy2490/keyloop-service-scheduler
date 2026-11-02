@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository;
+import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository.TechnicianData;
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository.TechnicianDetailsData;
 import com.keyloop.scheduler.application.common.result.Error;
 import com.keyloop.scheduler.application.common.result.Result;
@@ -64,7 +65,7 @@ class HandlerTest {
         // Arrange
         Query query = new Query(DEALERSHIP_ID);
 
-        List<TechnicianDetailsData> rows = List.of(
+        List<TechnicianData> rows = List.of(
                 createTechnicianDetails(
                         TECHNICIAN_ID_1,
                         "John Smith",
@@ -169,7 +170,7 @@ class HandlerTest {
         // Arrange
         Query query = new Query(DEALERSHIP_ID);
 
-        List<TechnicianDetailsData> rows = List.of(
+        List<TechnicianData> rows = List.of(
                 createTechnicianDetails(
                         TECHNICIAN_ID_1,
                         "John Smith",
@@ -215,7 +216,7 @@ class HandlerTest {
         // Arrange
         Query query = new Query(DEALERSHIP_ID);
 
-        List<TechnicianDetailsData> rows = List.of(
+        List<TechnicianData> rows = List.of(
                 createTechnicianDetails(
                         null,
                         null,
@@ -384,14 +385,14 @@ class HandlerTest {
         verifyNoMoreInteractions(technicianRepository);
     }
 
-    private TechnicianDetailsData createTechnicianDetails(
+    private TechnicianData createTechnicianDetails(
             UUID technicianId,
             String fullName,
             boolean active,
             UUID serviceTypeId,
             String serviceName
     ) {
-        return new TechnicianDetailsData(
+        return new TechnicianData(
                 DEALERSHIP_UUID,
                 DEALERSHIP_NAME,
                 technicianId,
