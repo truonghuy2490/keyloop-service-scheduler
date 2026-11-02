@@ -14,12 +14,16 @@ public class DatabaseSeeder {
         JdbcTemplate jdbc,
         DealershipSeeder dealershipSeeder,
         VehicleSeeder vehicleSeeder,
-        CustomerSeeder customerSeeder
+        CustomerSeeder customerSeeder,
+        ServiceBaySeeder serviceBaySeeder,
+        ServiceTypeSeeder serviceTypeSeeder
     ) {
         return args -> {
             dealershipSeeder.seed(jdbc);
             customerSeeder.seed(jdbc);
             vehicleSeeder.seed(jdbc);
+            serviceBaySeeder.seed(jdbc);
+            serviceTypeSeeder.seed(jdbc);
 
             System.out.println("Database seed completed.");
         };

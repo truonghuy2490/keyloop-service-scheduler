@@ -1,15 +1,17 @@
 package com.keyloop.scheduler.persistence.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.util.UUID;
 
 import com.keyloop.scheduler.persistence.entity.common.SoftDeletedAuditableJpaEntity;
 
 @Entity
 @Table(name = "service_bay")
 public class ServiceBayJpaEntity extends SoftDeletedAuditableJpaEntity {
+
     @Column(name = "dealership_id", nullable = false)
     private UUID dealershipId;
 
@@ -19,15 +21,61 @@ public class ServiceBayJpaEntity extends SoftDeletedAuditableJpaEntity {
     @Column(name = "active", nullable = false)
     private boolean active;
 
-    public ServiceBayJpaEntity() {}
+    protected ServiceBayJpaEntity() {
+    }
 
-    public UUID getDealershipId() { return dealershipId; }
-    public void setDealershipId(UUID dealershipId) { this.dealershipId = dealershipId; }
+    private ServiceBayJpaEntity(Builder builder) {
+        super(builder);
+        this.dealershipId = builder.dealershipId;
+        this.bayCode = builder.bayCode;
+        this.active = builder.active;
+    }
 
-    public String getBayCode() { return bayCode; }
-    public void setBayCode(String bayCode) { this.bayCode = bayCode; }
+    public static Builder builder() {
+        return new Builder();
+    }
 
-    public boolean isActive() { return active; }
-    public void setActive(boolean active) { this.active = active; }
+    public static class Builder
+            extends SoftDeletedAuditableJpaEntity.Builder<Builder> {
 
+        private UUID dealershipId;
+        private String bayCode;
+        private boolean active;
+
+        public Builder dealershipId(UUID dealershipId) {
+            this.dealershipId = dealershipId;
+            return this;
+        }
+
+        public Builder bayCode(String bayCode) {
+            this.bayCode = bayCode;
+            return this;
+        }
+
+        public Builder active(boolean active) {
+            this.active = active;
+            return this;
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+
+        public ServiceBayJpaEntity build() {
+            return new ServiceBayJpaEntity(this);
+        }
+    }
+
+    public UUID getDealershipId() {
+        return dealershipId;
+    }
+
+    public String getBayCode() {
+        return bayCode;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
 }

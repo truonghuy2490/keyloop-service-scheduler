@@ -1,36 +1,70 @@
 package com.keyloop.scheduler.domain.entity;
 
-import com.keyloop.scheduler.domain.common.SoftDeletableAuditableEntity;
-
 import java.util.UUID;
 
+import com.keyloop.scheduler.domain.common.SoftDeletableAuditableEntity;
+
 public class ServiceBay extends SoftDeletableAuditableEntity {
+
     private UUID dealershipId;
     private String bayCode;
     private boolean active;
-    public ServiceBay() {
-    }
-    public UUID getDealershipId() {
-        return dealershipId;
+
+    protected ServiceBay() {
     }
 
-    public void setDealershipId(UUID dealershipId) {
-        this.dealershipId = dealershipId;
+    private ServiceBay(Builder builder) {
+        super(builder);
+        this.dealershipId = builder.dealershipId;
+        this.bayCode = builder.bayCode;
+        this.active = builder.active;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder
+            extends SoftDeletableAuditableEntity.Builder<Builder> {
+
+        private UUID dealershipId;
+        private String bayCode;
+        private boolean active;
+
+        public Builder dealershipId(UUID dealershipId) {
+            this.dealershipId = dealershipId;
+            return this;
+        }
+
+        public Builder bayCode(String bayCode) {
+            this.bayCode = bayCode;
+            return this;
+        }
+
+        public Builder active(boolean active) {
+            this.active = active;
+            return this;
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+
+        public ServiceBay build() {
+            return new ServiceBay(this);
+        }
+    }
+
+    public UUID getDealershipId() {
+        return dealershipId;
     }
 
     public String getBayCode() {
         return bayCode;
     }
 
-    public void setBayCode(String bayCode) {
-        this.bayCode = bayCode;
-    }
-
     public boolean getActive() {
         return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
     }
 }
