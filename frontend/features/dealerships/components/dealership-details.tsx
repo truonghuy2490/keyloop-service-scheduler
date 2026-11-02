@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -23,6 +22,7 @@ import type {
   DealershipWorkingHours,
 } from "@/features/dealerships/dealership.types";
 import DealershipMonthCalendar from "./dealership-month-calendar";
+import DealershipServiceBays from "@/features/service-bay/components/dealership-service-bays";
 
 interface DealershipDetailsProps {
   dealershipId: string;
@@ -405,6 +405,9 @@ export default function DealershipDetails({
           })}
         </div>
       </div>
+
+      {/* Service Bays */}
+      <DealershipServiceBays dealershipId={data.id} />
 
       {/* Booking Information */}
       <div className="overflow-hidden rounded-xl bg-primary text-primary-content shadow-sm">

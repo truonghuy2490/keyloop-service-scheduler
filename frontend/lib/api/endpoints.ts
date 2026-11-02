@@ -10,6 +10,10 @@ export const API_ENDPOINTS = {
       `dealerships/${dealershipId}`,
   },
 
+  SERVICE_BAYS: {
+    BASE: "/service-bays",
+    BY_ID: (serviceBayId: string) => `/service-bays/${serviceBayId}`,
+  },
 
   VEHICLES: {
     BASE: "/vehicles",

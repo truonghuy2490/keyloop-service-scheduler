@@ -124,6 +124,7 @@ export const baseApiSlice = createApi({
     "Dealership",
     "Vehicle",
     "ServiceType",
+    "ServiceBay",
     "Customer",
   ],
 
