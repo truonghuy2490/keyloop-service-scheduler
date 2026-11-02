@@ -1,18 +1,20 @@
 package com.keyloop.scheduler.persistence.entity;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.util.UUID;
 
 import com.keyloop.scheduler.persistence.entity.common.SoftDeletedAuditableJpaEntity;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-
 @Entity
 @Table(name = "technician_date_override")
-public class TechnicianDateOverrideJpaEntity extends SoftDeletedAuditableJpaEntity {
+public class TechnicianDateOverrideJpaEntity
+        extends SoftDeletedAuditableJpaEntity {
+
     @Column(name = "technician_id", nullable = false)
     private UUID technicianId;
 
@@ -31,24 +33,94 @@ public class TechnicianDateOverrideJpaEntity extends SoftDeletedAuditableJpaEnti
     @Column(name = "reason", length = 300)
     private String reason;
 
-    public TechnicianDateOverrideJpaEntity() {}
+    protected TechnicianDateOverrideJpaEntity() {
+    }
 
-    public UUID getTechnicianId() { return technicianId; }
-    public void setTechnicianId(UUID technicianId) { this.technicianId = technicianId; }
+    private TechnicianDateOverrideJpaEntity(Builder builder) {
+        super(builder);
+        this.technicianId = builder.technicianId;
+        this.workDate = builder.workDate;
+        this.unavailable = builder.unavailable;
+        this.startsAt = builder.startsAt;
+        this.endsAt = builder.endsAt;
+        this.reason = builder.reason;
+    }
 
-    public LocalDate getWorkDate() { return workDate; }
-    public void setWorkDate(LocalDate workDate) { this.workDate = workDate; }
+    public static Builder builder() {
+        return new Builder();
+    }
 
-    public boolean isUnavailable() { return unavailable; }
-    public void setUnavailable(boolean unavailable) { this.unavailable = unavailable; }
+    public static class Builder
+            extends SoftDeletedAuditableJpaEntity.Builder<Builder> {
 
-    public LocalTime getStartsAt() { return startsAt; }
-    public void setStartsAt(LocalTime startsAt) { this.startsAt = startsAt; }
+        private UUID technicianId;
+        private LocalDate workDate;
+        private boolean unavailable;
+        private LocalTime startsAt;
+        private LocalTime endsAt;
+        private String reason;
 
-    public LocalTime getEndsAt() { return endsAt; }
-    public void setEndsAt(LocalTime endsAt) { this.endsAt = endsAt; }
+        public Builder technicianId(UUID technicianId) {
+            this.technicianId = technicianId;
+            return this;
+        }
 
-    public String getReason() { return reason; }
-    public void setReason(String reason) { this.reason = reason; }
+        public Builder workDate(LocalDate workDate) {
+            this.workDate = workDate;
+            return this;
+        }
 
+        public Builder unavailable(boolean unavailable) {
+            this.unavailable = unavailable;
+            return this;
+        }
+
+        public Builder startsAt(LocalTime startsAt) {
+            this.startsAt = startsAt;
+            return this;
+        }
+
+        public Builder endsAt(LocalTime endsAt) {
+            this.endsAt = endsAt;
+            return this;
+        }
+
+        public Builder reason(String reason) {
+            this.reason = reason;
+            return this;
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+
+        public TechnicianDateOverrideJpaEntity build() {
+            return new TechnicianDateOverrideJpaEntity(this);
+        }
+    }
+
+    public UUID getTechnicianId() {
+        return technicianId;
+    }
+
+    public LocalDate getWorkDate() {
+        return workDate;
+    }
+
+    public boolean isUnavailable() {
+        return unavailable;
+    }
+
+    public LocalTime getStartsAt() {
+        return startsAt;
+    }
+
+    public LocalTime getEndsAt() {
+        return endsAt;
+    }
+
+    public String getReason() {
+        return reason;
+    }
 }

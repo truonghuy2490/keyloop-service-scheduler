@@ -1,17 +1,19 @@
 package com.keyloop.scheduler.persistence.entity;
 
+import java.time.LocalTime;
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
-import java.util.UUID;
 
 import com.keyloop.scheduler.persistence.entity.common.SoftDeletedCreatedJpaEntity;
 
-import java.time.LocalTime;
-
 @Entity
 @Table(name = "technician_working_hours")
-public class TechnicianWorkingHoursJpaEntity extends SoftDeletedCreatedJpaEntity {
+public class TechnicianWorkingHoursJpaEntity
+        extends SoftDeletedCreatedJpaEntity {
+
     @Column(name = "technician_id", nullable = false)
     private UUID technicianId;
 
@@ -24,18 +26,72 @@ public class TechnicianWorkingHoursJpaEntity extends SoftDeletedCreatedJpaEntity
     @Column(name = "ends_at", nullable = false)
     private LocalTime endsAt;
 
-    public TechnicianWorkingHoursJpaEntity() {}
+    protected TechnicianWorkingHoursJpaEntity() {
+    }
 
-    public UUID getTechnicianId() { return technicianId; }
-    public void setTechnicianId(UUID technicianId) { this.technicianId = technicianId; }
+    private TechnicianWorkingHoursJpaEntity(Builder builder) {
+        super(builder);
+        this.technicianId = builder.technicianId;
+        this.dayOfWeek = builder.dayOfWeek;
+        this.startsAt = builder.startsAt;
+        this.endsAt = builder.endsAt;
+    }
 
-    public Short getDayOfWeek() { return dayOfWeek; }
-    public void setDayOfWeek(Short dayOfWeek) { this.dayOfWeek = dayOfWeek; }
+    public static Builder builder() {
+        return new Builder();
+    }
 
-    public LocalTime getStartsAt() { return startsAt; }
-    public void setStartsAt(LocalTime startsAt) { this.startsAt = startsAt; }
+    public static class Builder
+            extends SoftDeletedCreatedJpaEntity.Builder<Builder> {
 
-    public LocalTime getEndsAt() { return endsAt; }
-    public void setEndsAt(LocalTime endsAt) { this.endsAt = endsAt; }
+        private UUID technicianId;
+        private Short dayOfWeek;
+        private LocalTime startsAt;
+        private LocalTime endsAt;
 
+        public Builder technicianId(UUID technicianId) {
+            this.technicianId = technicianId;
+            return this;
+        }
+
+        public Builder dayOfWeek(Short dayOfWeek) {
+            this.dayOfWeek = dayOfWeek;
+            return this;
+        }
+
+        public Builder startsAt(LocalTime startsAt) {
+            this.startsAt = startsAt;
+            return this;
+        }
+
+        public Builder endsAt(LocalTime endsAt) {
+            this.endsAt = endsAt;
+            return this;
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+
+        public TechnicianWorkingHoursJpaEntity build() {
+            return new TechnicianWorkingHoursJpaEntity(this);
+        }
+    }
+
+    public UUID getTechnicianId() {
+        return technicianId;
+    }
+
+    public Short getDayOfWeek() {
+        return dayOfWeek;
+    }
+
+    public LocalTime getStartsAt() {
+        return startsAt;
+    }
+
+    public LocalTime getEndsAt() {
+        return endsAt;
+    }
 }
