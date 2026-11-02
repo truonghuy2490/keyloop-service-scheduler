@@ -11,6 +11,12 @@ export const API_ENDPOINTS = {
       `/dealerships/${dealershipId}/technicians`,
   },
 
+  TECHNICIANS: {
+    BASE: "/technicians",
+    BY_ID: (technicianId: string) =>
+      `/technicians/${technicianId}`,
+  },
+
   SERVICE_BAYS: {
     BASE: "/service-bays",
     BY_ID: (serviceBayId: string) => `/service-bays/${serviceBayId}`,
