@@ -23,6 +23,7 @@ import type {
 } from "@/features/dealerships/dealership.types";
 import DealershipMonthCalendar from "./dealership-month-calendar";
 import DealershipServiceBays from "@/features/service-bay/components/dealership-service-bays";
+import DealershipTechnicians from "@/features/technicians/components/dealership-technicians";
 
 interface DealershipDetailsProps {
   dealershipId: string;
@@ -408,6 +409,9 @@ export default function DealershipDetails({
 
       {/* Service Bays */}
       <DealershipServiceBays dealershipId={data.id} />
+
+      {/* Technicians */}
+      <DealershipTechnicians dealershipId={data.id} />
 
       {/* Booking Information */}
       <div className="overflow-hidden rounded-xl bg-primary text-primary-content shadow-sm">

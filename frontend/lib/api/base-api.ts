@@ -126,6 +126,7 @@ export const baseApiSlice = createApi({
     "ServiceType",
     "ServiceBay",
     "Customer",
+    "Technician",
   ],
 
   endpoints: () => ({}),
