@@ -6,7 +6,7 @@
 ![CI: GitHub Actions](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=flat&logo=githubactions&logoColor=white)
 ![CD: Azure DevOps](https://img.shields.io/badge/CD-Azure_DevOps-0078D4?style=flat&logo=azuredevops&logoColor=white)
 
-[![codecov](https://codecov.io/gh/truonghuy2490/keyloop-service-scheduler-demo/branch/main/graph/badge.svg)](https://app.codecov.io/github/truonghuy2490/keyloop-service-scheduler-demo)
+[![codecov](https://codecov.io/github/truonghuy2490/keyloop-service-scheduler/graph/badge.svg?token=uscsN109Gz)](https://codecov.io/github/truonghuy2490/keyloop-service-scheduler)
 
 A backend appointment scheduling system built with Java and Spring Boot to help automotive dealerships manage service appointments, technicians, and service bays.
 
