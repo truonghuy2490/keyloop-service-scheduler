@@ -67,3 +67,13 @@ jobs:
           name: backend-jacoco-report
           path: backend/target/site/jacoco/
           if-no-files-found: ignore
+
+      # 6. Upload coverage to Codecov
+      - name: Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v7
+        with:
+          files: backend/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
