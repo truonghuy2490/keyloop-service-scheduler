@@ -50,7 +50,14 @@ jobs:
           chmod +x mvnw
           ./mvnw --batch-mode --no-transfer-progress clean verify
 
-      # 4. Upload test results
+      # 4. Check and Upload test results
+      - name: Check JaCoCo report
+        if: always()
+        run: |
+          echo "Checking JaCoCo reports..."
+          find . -name "jacoco.xml" -type f
+          find . -name "jacoco.exec" -type f
+
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -58,6 +65,7 @@ jobs:
           name: backend-test-reports
           path: backend/target/surefire-reports/
           if-no-files-found: ignore
+
 
       # 5. Upload JaCoCo coverage report
       - name: Upload JaCoCo coverage report
@@ -69,7 +77,13 @@ jobs:
           if-no-files-found: ignore
 
       # 6. Upload coverage to Codecov
-      - name: Upload coverage reports to Codecov
+      - name: Upload coverage to Codecov
+        if: success()
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: backend/target/site/jacoco/jacoco.xml
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: true
+          verbose: true
