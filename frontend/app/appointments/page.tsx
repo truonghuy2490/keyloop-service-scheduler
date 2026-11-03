@@ -1,21 +1,9 @@
-import DealershipList from "@/features/dealerships/components/dealership-list";
+import CustomerAppointmentList from "@/features/appointments/components/customer-appointment-list";
 
 export default function AppointmentsPage() {
   return (
-    <main className="min-h-screen bg-base-200 p-6 md:p-10">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-base-content">
-            Book a Service Appointment
-          </h1>
-
-          <p className="mt-2 text-sm text-base-content/60">
-            Select a dealership to start your booking.
-          </p>
-        </div>
-
-        <DealershipList />
-      </div>
+    <main className="mx-auto max-w-6xl px-4 py-8">
+      <CustomerAppointmentList />
     </main>
   );
 }

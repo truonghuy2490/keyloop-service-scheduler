@@ -68,3 +68,52 @@ export interface Appointment {
 }
 
 export type CreateAppointmentResponse = Appointment;
+
+export interface CustomerAppointmentVehicle {
+  registrationNumber: string;
+  make: string;
+  model: string;
+}
+
+export interface CustomerAppointmentDealership {
+  name: string;
+}
+
+export interface CustomerAppointmentService {
+  name: string;
+  durationMinutes: number;
+}
+
+export interface CustomerAppointmentSchedule {
+  startTime: string;
+  endTime: string;
+}
+
+export interface CustomerAppointment {
+  id: string;
+  status: string;
+  vehicle: CustomerAppointmentVehicle;
+  dealership: CustomerAppointmentDealership;
+  service: CustomerAppointmentService;
+  schedule: CustomerAppointmentSchedule;
+}
+
+export interface GetCustomerAppointmentsRequest {
+  customerId: string;
+  pageNumber?: number;
+  pageSize?: number;
+}
+
+export interface PagedList<T> {
+  items: T[];
+  pageNumber: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
+export type GetCustomerAppointmentsResponse =
+  PagedList<CustomerAppointment>;
+  
