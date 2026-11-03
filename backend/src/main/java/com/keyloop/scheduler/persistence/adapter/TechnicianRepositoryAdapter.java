@@ -15,13 +15,22 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository;
+import com.keyloop.scheduler.domain.entity.Technician;
+import com.keyloop.scheduler.persistence.entity.TechnicianJpaEntity;
+import com.keyloop.scheduler.persistence.repository.TechnicianJpaRepository;
 
 @Repository
-public class TechnicianRepositoryAdapter implements TechnicianRepository {
+public class TechnicianRepositoryAdapter 
+        extends BaseRepositoryAdapter<Technician,TechnicianJpaEntity,UUID> 
+        implements TechnicianRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public TechnicianRepositoryAdapter(JdbcTemplate jdbcTemplate) {
+    
+    public TechnicianRepositoryAdapter(
+        TechnicianJpaRepository technicianRepository,
+        JdbcTemplate jdbcTemplate) {
+        super(technicianRepository);
         this.jdbcTemplate = jdbcTemplate;
     }
 
@@ -260,4 +269,65 @@ public class TechnicianRepositoryAdapter implements TechnicianRepository {
                 ? timestamp.toInstant()
                 : null;
     }
+
+     @Override
+    protected Technician toDomain(TechnicianJpaEntity source) {
+        if (source == null) {
+            return null;
+        }
+
+        return Technician.builder()
+                .id(source.getId())
+                .isDeleted(source.isDeleted())
+                .createdAt(source.getCreatedAt())
+                .updatedAt(source.getUpdatedAt())
+                .dealershipId(source.getDealershipId())
+                .fullName(source.getFullName())
+                .active(source.isActive())
+                .build();
+    }
+
+    @Override
+    protected TechnicianJpaEntity toPersistence(Technician source) {
+        if (source == null) {
+            return null;
+        }
+
+        return TechnicianJpaEntity.builder()
+                .id(source.getId())
+                .deleted(source.getIsDeleted())
+                .dealershipId(source.getDealershipId())
+                .fullName(source.getFullName())
+                .active(source.getActive())
+                .build();
+    }
+
+    @Override
+@Transactional(readOnly = true)
+public boolean isQualifiedForServiceType(
+        UUID technicianId,
+        UUID serviceTypeId
+) {
+    Integer count = jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM technician_qualification tq
+            INNER JOIN technician t
+                ON t.id = tq.technician_id
+                AND t.is_deleted = false
+                AND t.active = true
+            INNER JOIN service_type st
+                ON st.id = tq.service_type_id
+                AND st.is_deleted = false
+            WHERE tq.technician_id = ?
+              AND tq.service_type_id = ?
+            """,
+            Integer.class,
+            technicianId,
+            serviceTypeId
+    );
+
+    return count != null && count > 0;
+}
+
 }
