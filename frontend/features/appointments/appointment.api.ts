@@ -1,5 +1,5 @@
 
-import { baseApiSlice } from "@/lib/api/base-api";
+import { baseApiSlice } from "@/lib/api/base.api";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
 
 import type {

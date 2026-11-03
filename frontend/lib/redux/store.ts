@@ -10,7 +10,7 @@ import {
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 
-import { baseApiSlice } from "@/lib/api/base-api";
+import { baseApiSlice } from "@/lib/api/base.api";
 import customerReducer from "@/features/customer/customer.slice";
 import toastReducer from "@/features/shared/toast.slice";
 

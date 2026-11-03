@@ -1,5 +1,7 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+
 import Navbar from "@/features/shared/components/layout/navbar/Navbar";
 import ToastContainer from "@/features/shared/components/layout/toast/ToastContainer";
 
@@ -10,30 +12,23 @@ interface RootLayoutContentProps {
 export default function RootLayoutContent({
   children,
 }: RootLayoutContentProps) {
+  const pathname = usePathname();
+
+  // Hide navbar on Home Landing Page
+  const isLandingPage = pathname === "/";
+
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Navbar */}
-      <Navbar />
+      {/* Global Navbar */}
+      {!isLandingPage && <Navbar />}
 
-      {/* Main Layout */}
-      <div className="drawer md:drawer-open relative flex-1">
-        <input
-          id="app-drawer"
-          type="checkbox"
-          className="drawer-toggle"
-        />
-
-        {/* Main Content */}
-        <div className="drawer-content flex min-h-full flex-col">
-          <main className="w-full flex-1 px-4 py-6 sm:px-6 lg:px-8">
-            {children}
-          </main>
-        </div>
-
+      {/* Main Content */}
+      <div className="min-w-0 flex-1">
+        {children}
       </div>
 
       {/* Global Components */}
-      <ToastContainer />   
+      <ToastContainer />
     </div>
   );
 }

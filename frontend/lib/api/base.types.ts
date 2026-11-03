@@ -1,3 +1,4 @@
+
 // ================= Pagination =================
 
 export interface PaginationRequest {
@@ -8,9 +9,11 @@ export interface PaginationRequest {
 export interface PagedList<T> {
   items: T[];
   pageNumber: number;
+  pageSize: number;
   totalPages: number;
   totalCount: number;
-  pageSize: number;
+  hasPreviousPage?: boolean;
+  hasNextPage?: boolean;
 }
 
 // ================= API Error =================

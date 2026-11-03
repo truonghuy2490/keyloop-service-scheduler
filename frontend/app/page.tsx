@@ -1,9 +1,5 @@
-import SetupCard from "@/features/shared/components/ui/SetupCard";
+import HomeLanding from "@/features/home/components/home-landing";
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <SetupCard />
-    </main>
-  );
+  return <HomeLanding />;
 }
