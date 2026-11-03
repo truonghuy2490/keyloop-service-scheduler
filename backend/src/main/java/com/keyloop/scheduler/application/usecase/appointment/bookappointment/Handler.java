@@ -19,6 +19,7 @@ import com.keyloop.scheduler.application.abstraction.dataaccess.BaseRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.ServiceBayRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository;
+import com.keyloop.scheduler.application.abstraction.transaction.TransactionExecutor;
 import com.keyloop.scheduler.application.common.result.ErrorDetails;
 import com.keyloop.scheduler.application.common.result.Result;
 import com.keyloop.scheduler.domain.entity.Appointment;
@@ -46,6 +47,7 @@ public class Handler {
         private final DealershipRepository dealershipRepository;
 
         private final AppointmentScheduleValidator scheduleValidator;
+        private final TransactionExecutor transactionExecutor;
 
         public Handler(
                         Validators validators,
@@ -56,7 +58,8 @@ public class Handler {
                         AppointmentRepository appointmentRepository,
                         TechnicianRepository technicianRepository,
                         DealershipRepository dealershipRepository,
-                        AppointmentScheduleValidator scheduleValidator
+                        AppointmentScheduleValidator scheduleValidator,
+                        TransactionExecutor transactionExecutor
 
         ) {
                 this.validators = validators;
@@ -68,6 +71,7 @@ public class Handler {
                 this.appointmentRepository = appointmentRepository;
                 this.technicianRepository = technicianRepository;
                 this.scheduleValidator = scheduleValidator;
+                this.transactionExecutor = transactionExecutor;
         }
 
         @Async("applicationTaskExecutor")
@@ -385,159 +389,144 @@ public class Handler {
                                         technicianId);
 
                         /*
-                         * 6. Automatically assign an available service bay
+                         * 6-8. Execute booking within @Transaction
                          */
 
-                        // Retrieve active service bays
-                        List<ServiceBay> serviceBays = serviceBayRepository.findActiveByDealershipId(
-                                        dealershipId);
+                        Result<Response> bookingResult = transactionExecutor.executeResult(() -> {
 
-                        // Find the first available service bay
-                        ServiceBay selectedServiceBay = null;
-
-                        for (ServiceBay bay : serviceBays) {
-
-                                boolean hasOverlap = appointmentRepository.existsServiceBayOverlap(
-                                                bay.getId(),
+                                // 6. Check technician appointment overlap
+                                boolean technicianHasOverlap = appointmentRepository.existsTechnicianOverlap(
+                                                technicianId,
                                                 startTime,
                                                 endTime);
 
-                                if (!hasOverlap) {
-                                        selectedServiceBay = bay;
-                                        break;
-                                }
-                        }
+                                if (technicianHasOverlap) {
+                                        logger.info(
+                                                        "Technician {} already has an appointment between {} and {}.",
+                                                        technicianId,
+                                                        startTime,
+                                                        endTime);
 
-                        // No available service bay
-                        if (selectedServiceBay == null) {
+                                        return Result.failure(
+                                                        new ErrorDetails(
+                                                                        List.of(Errors.TECHNICIAN_UNAVAILABLE)));
+                                }
+
+                                // 7. Automatically assign an available service bay
+                                List<ServiceBay> serviceBays = serviceBayRepository.findActiveByDealershipId(
+                                                dealershipId);
+
+                                ServiceBay selectedServiceBay = null;
+
+                                for (ServiceBay bay : serviceBays) {
+
+                                        boolean hasOverlap = appointmentRepository.existsServiceBayOverlap(
+                                                        bay.getId(),
+                                                        startTime,
+                                                        endTime);
+
+                                        if (!hasOverlap) {
+                                                selectedServiceBay = bay;
+                                                break;
+                                        }
+                                }
+
+                                if (selectedServiceBay == null) {
+                                        logger.info(
+                                                        "No available service bay for dealership {} between {} and {}.",
+                                                        dealershipId,
+                                                        startTime,
+                                                        endTime);
+
+                                        return Result.failure(
+                                                        new ErrorDetails(
+                                                                        List.of(Errors.SERVICE_BAY_UNAVAILABLE)));
+                                }
+
+                                UUID serviceBayId = selectedServiceBay.getId();
+
+                                // 8. Create appointment
+                                Appointment appointment = Appointment.builder()
+                                                .customerId(customerId)
+                                                .vehicleId(vehicleId)
+                                                .dealershipId(dealershipId)
+                                                .serviceTypeId(serviceTypeId)
+                                                .technicianId(technicianId)
+                                                .serviceBayId(serviceBayId)
+                                                .startTime(startTime)
+                                                .endTime(endTime)
+                                                .status(AppointmentStatus.CONFIRMED.name())
+                                                .isDeleted(false)
+                                                .build();
+
+                                Appointment savedAppointment = appointmentRepository.save(appointment);
 
                                 logger.info(
-                                                "No available service bay for dealership {} between {} and {}.",
-                                                dealershipId,
-                                                startTime,
-                                                endTime);
+                                                "Appointment {} persisted for customer {}.",
+                                                savedAppointment.getId(),
+                                                customerId);
 
-                                return CompletableFuture.completedFuture(
-                                                Result.failure(
-                                                                new ErrorDetails(
-                                                                                List.of(Errors.SERVICE_BAY_UNAVAILABLE))));
-                        }
+                                // 9. Map response
+                                ZoneId responseZone = ZoneId.of(
+                                                dealership.getTimeZone());
 
-                        UUID serviceBayId = selectedServiceBay.getId();
+                                OffsetDateTime appointmentStartTime = savedAppointment.getStartTime()
+                                                .atZone(responseZone)
+                                                .toOffsetDateTime();
 
-                        logger.info(
-                                        "Assigned service bay {} to appointment.",
-                                        serviceBayId);
+                                OffsetDateTime appointmentEndTime = savedAppointment.getEndTime()
+                                                .atZone(responseZone)
+                                                .toOffsetDateTime();
 
-                        /*
-                         * 7. Create appointment
-                         */
+                                Response response = new Response(
+                                                savedAppointment.getId(),
+                                                savedAppointment.getStatus(),
 
-                        // Build appointment
-                        Appointment appointment = Appointment.builder()
-                                        // .id(UUID.randomUUID())
-                                        .customerId(customerId)
-                                        .vehicleId(vehicleId)
-                                        .dealershipId(dealershipId)
-                                        .serviceTypeId(serviceTypeId)
-                                        .technicianId(technicianId)
-                                        .serviceBayId(serviceBayId)
-                                        .startTime(startTime)
-                                        .endTime(endTime)
-                                        .status(AppointmentStatus.CONFIRMED.name())
-                                        .isDeleted(false)
-                                        .build();
+                                                new Response.CustomerItem(
+                                                                customer.getId(),
+                                                                customer.getFullName()),
 
-                        // Persist appointment
-                        Appointment savedAppointment = appointmentRepository.save(appointment);
+                                                new Response.VehicleItem(
+                                                                vehicle.getId(),
+                                                                vehicle.getRegistrationNumber(),
+                                                                vehicle.getMake(),
+                                                                vehicle.getModel(),
+                                                                vehicle.getModelYear() != null
+                                                                                ? vehicle.getModelYear().intValue()
+                                                                                : null),
 
-                        logger.info(
-                                        "Appointment {} created successfully for customer {}. " +
-                                                        "Technician={}, ServiceBay={}, StartTime={}, EndTime={}.",
-                                        savedAppointment.getId(),
-                                        customerId,
-                                        technicianId,
-                                        serviceBayId,
-                                        startTime,
-                                        endTime);
+                                                new Response.DealershipItem(
+                                                                dealership.getId(),
+                                                                dealership.getName(),
+                                                                dealership.getTimeZone()),
 
-                        /*
-                         * 8. Map Response
-                         */
+                                                new Response.ServiceItem(
+                                                                serviceType.getId(),
+                                                                serviceType.getName(),
+                                                                serviceType.getDescription(),
+                                                                serviceType.getDurationMinutes()),
 
-                        // Convert appointment schedule to dealership timezone
-                        dealershipZone = ZoneId.of(dealership.getTimeZone());
+                                                new Response.TechnicianItem(
+                                                                technician.getId(),
+                                                                technician.getFullName()),
 
-                        OffsetDateTime appointmentStartTime = savedAppointment
-                                        .getStartTime()
-                                        .atZone(dealershipZone)
-                                        .toOffsetDateTime();
+                                                new Response.ServiceBayItem(
+                                                                selectedServiceBay.getId(),
+                                                                selectedServiceBay.getBayCode()),
 
-                        OffsetDateTime appointmentEndTime = savedAppointment
-                                        .getEndTime()
-                                        .atZone(dealershipZone)
-                                        .toOffsetDateTime();
+                                                new Response.ScheduleItem(
+                                                                appointmentStartTime,
+                                                                appointmentEndTime,
+                                                                durationMinutes,
+                                                                dealership.getTimeZone()),
 
-                        // Build response
-                        Response response = new Response(
-                                        savedAppointment.getId(),
-                                        savedAppointment.getStatus(),
+                                                savedAppointment.getCreatedAt(),
+                                                savedAppointment.getUpdatedAt());
 
-                                        // Customer
-                                        new Response.CustomerItem(
-                                                        customer.getId(),
-                                                        customer.getFullName()),
+                                return Result.success(response);
+                        });
 
-                                        // Vehicle
-                                        new Response.VehicleItem(
-                                                        vehicle.getId(),
-                                                        vehicle.getRegistrationNumber(),
-                                                        vehicle.getMake(),
-                                                        vehicle.getModel(),
-                                                        vehicle.getModelYear() != null
-                                                                        ? vehicle.getModelYear().intValue()
-                                                                        : null),
-
-                                        // Dealership
-                                        new Response.DealershipItem(
-                                                        dealership.getId(),
-                                                        dealership.getName(),
-                                                        dealership.getTimeZone()),
-
-                                        // Service
-                                        new Response.ServiceItem(
-                                                        serviceType.getId(),
-                                                        serviceType.getName(),
-                                                        serviceType.getDescription(),
-                                                        serviceType.getDurationMinutes()),
-
-                                        // Technician
-                                        new Response.TechnicianItem(
-                                                        technician.getId(),
-                                                        technician.getFullName()),
-
-                                        // Service Bay
-                                        new Response.ServiceBayItem(
-                                                        selectedServiceBay.getId(),
-                                                        selectedServiceBay.getBayCode()),
-
-                                        // Schedule
-                                        new Response.ScheduleItem(
-                                                        appointmentStartTime,
-                                                        appointmentEndTime,
-                                                        durationMinutes,
-                                                        dealership.getTimeZone()),
-
-                                        savedAppointment.getCreatedAt(),
-                                        savedAppointment.getUpdatedAt());
-
-                        // Return success
-                        logger.info(
-                                        "Appointment {} booked successfully.",
-                                        savedAppointment.getId());
-
-                        return CompletableFuture.completedFuture(
-                                        Result.success(response));
+                        return CompletableFuture.completedFuture(bookingResult);
 
                 } catch (DataAccessException ex) {
                         logger.error(

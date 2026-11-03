@@ -1,4 +1,3 @@
-
 package com.keyloop.scheduler.application.usecase.appointment.bookappointment;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -10,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +23,7 @@ import com.keyloop.scheduler.application.abstraction.dataaccess.BaseRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.ServiceBayRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository;
+import com.keyloop.scheduler.application.abstraction.transaction.TransactionExecutor;
 import com.keyloop.scheduler.application.common.result.Error;
 import com.keyloop.scheduler.application.common.result.Result;
 import com.keyloop.scheduler.domain.entity.Appointment;
@@ -59,6 +60,9 @@ class HandlerTest {
 
         @Mock
         private AppointmentScheduleValidator scheduleValidator;
+
+        @Mock
+        private TransactionExecutor transactionExecutor;
 
         private Handler handler;
 
@@ -97,7 +101,8 @@ class HandlerTest {
                                 appointmentRepository,
                                 technicianRepository,
                                 dealershipRepository,
-                                scheduleValidator);
+                                scheduleValidator,
+                                transactionExecutor);
         }
 
         @Test
@@ -490,9 +495,51 @@ class HandlerTest {
                 verifyNoInteractions(appointmentRepository);
         }
 
+        @Test
+        void shouldReturnFailureWhenTechnicianHasOverlappingAppointment() {
+                mockValidBookingPrerequisites();
+
+                when(appointmentRepository.existsTechnicianOverlap(
+                                eq(technicianId),
+                                any(Instant.class),
+                                any(Instant.class))).thenReturn(true);
+
+                Result<Response> result = handler.handle(request).join();
+
+                assertError(result, Errors.TECHNICIAN_UNAVAILABLE);
+                verify(transactionExecutor).executeResult(any());
+                verifyNoInteractions(serviceBayRepository);
+                verify(appointmentRepository, never()).save(any(Appointment.class));
+        }
+
+        @Test
+        void shouldReturnFailureWhenDatabaseFailsInsideTransaction() {
+                mockValidBookingPrerequisites();
+
+                ServiceBay bay = mockServiceBay(serviceBayId);
+                when(serviceBayRepository.findActiveByDealershipId(dealershipId))
+                                .thenReturn(List.of(bay));
+                when(appointmentRepository.save(any(Appointment.class)))
+                                .thenThrow(new DataAccessResourceFailureException(
+                                                "Database unavailable during insert"));
+
+                Result<Response> result = handler.handle(request).join();
+
+                assertError(result, Errors.APPOINTMENT_CREATION_FAILED);
+                verify(transactionExecutor).executeResult(any());
+                verify(appointmentRepository).save(any(Appointment.class));
+        }
+
         // =========================================================
         // Helpers
         // =========================================================
+
+        private void mockTransactionExecution() {
+                doAnswer(invocation -> {
+                        Supplier<?> action = invocation.getArgument(0);
+                        return action.get();
+                }).when(transactionExecutor).executeResult(any());
+        }
 
         private void mockCustomer() {
                 Customer customer = mock(Customer.class);
@@ -555,6 +602,7 @@ class HandlerTest {
         }
 
         private void mockValidBookingPrerequisites() {
+                mockTransactionExecution();
                 mockValidEntitiesBeforeTechnician();
                 mockTechnician();
 
