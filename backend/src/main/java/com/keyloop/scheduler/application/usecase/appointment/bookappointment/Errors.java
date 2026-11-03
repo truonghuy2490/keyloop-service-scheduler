@@ -57,14 +57,6 @@ public final class Errors {
                     null
             );
 
-    public static final Error INVALID_SERVICE_BAY_ID =
-            new Error(
-                    "INVALID_SERVICE_BAY_ID",
-                    "Service bay ID must be a valid UUID.",
-                    ErrorType.VALIDATION,
-                    null
-            );
-
     public static final Error INVALID_START_TIME =
             new Error(
                     "INVALID_START_TIME",
@@ -204,22 +196,6 @@ public final class Errors {
             );
 
     // Service bay
-
-    public static final Error SERVICE_BAY_NOT_FOUND =
-            new Error(
-                    "SERVICE_BAY_NOT_FOUND",
-                    "Service bay was not found.",
-                    ErrorType.NOT_FOUND,
-                    null
-            );
-
-    public static final Error SERVICE_BAY_NOT_IN_DEALERSHIP =
-            new Error(
-                    "SERVICE_BAY_NOT_IN_DEALERSHIP",
-                    "Service bay does not belong to the specified dealership.",
-                    ErrorType.VALIDATION,
-                    null
-            );
 
     public static final Error SERVICE_BAY_INACTIVE =
             new Error(

@@ -8,6 +8,5 @@ public record Request(
         String dealershipId,
         String serviceTypeId,
         String technicianId,
-        OffsetDateTime startTime
-) {
+        OffsetDateTime startTime) {
 }

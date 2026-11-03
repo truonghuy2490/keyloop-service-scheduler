@@ -1,3 +1,4 @@
+
 package com.keyloop.scheduler.application.usecase.appointment.bookappointment;
 
 import java.time.OffsetDateTime;
@@ -35,10 +36,6 @@ public class Validators {
 
         if (!isValidGuid(request.technicianId())) {
             return List.of(Errors.INVALID_TECHNICIAN_ID);
-        }
-
-        if (!isValidGuid(request.serviceBayId())) {
-            return List.of(Errors.INVALID_SERVICE_BAY_ID);
         }
 
         if (!isValidStartTime(request.startTime())) {

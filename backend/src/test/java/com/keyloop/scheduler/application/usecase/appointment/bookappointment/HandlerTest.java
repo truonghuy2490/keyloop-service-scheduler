@@ -2,9 +2,12 @@
 package com.keyloop.scheduler.application.usecase.appointment.bookappointment;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,9 +21,11 @@ import org.springframework.dao.DataAccessResourceFailureException;
 import com.keyloop.scheduler.application.abstraction.dataaccess.AppointmentRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.BaseRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository;
+import com.keyloop.scheduler.application.abstraction.dataaccess.ServiceBayRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.TechnicianRepository;
 import com.keyloop.scheduler.application.common.result.Error;
 import com.keyloop.scheduler.application.common.result.Result;
+import com.keyloop.scheduler.domain.entity.Appointment;
 import com.keyloop.scheduler.domain.entity.Customer;
 import com.keyloop.scheduler.domain.entity.Dealership;
 import com.keyloop.scheduler.domain.entity.ServiceBay;
@@ -31,626 +36,573 @@ import com.keyloop.scheduler.domain.entity.Vehicle;
 @ExtendWith(MockitoExtension.class)
 class HandlerTest {
 
-    @Mock
-    private BaseRepository<Customer, UUID> customerRepository;
-
-    @Mock
-    private BaseRepository<Vehicle, UUID> vehicleRepository;
-
-    @Mock
-    private BaseRepository<ServiceType, UUID> serviceTypeRepository;
-
-    @Mock
-    private BaseRepository<ServiceBay, UUID> serviceBayRepository;
-
-    @Mock
-    private AppointmentRepository appointmentRepository;
-
-    @Mock
-    private TechnicianRepository technicianRepository;
-
-    @Mock
-    private DealershipRepository dealershipRepository;
-
-    @Mock
-    private AppointmentScheduleValidator scheduleValidator;
-
-    private Handler handler;
-
-    private UUID customerId;
-    private UUID vehicleId;
-    private UUID dealershipId;
-    private UUID serviceTypeId;
-    private UUID technicianId;
-    private UUID serviceBayId;
-
-    private Request request;
-
-    @BeforeEach
-    void setUp() {
-
-        customerId = UUID.randomUUID();
-        vehicleId = UUID.randomUUID();
-        dealershipId = UUID.randomUUID();
-        serviceTypeId = UUID.randomUUID();
-        technicianId = UUID.randomUUID();
-        serviceBayId = UUID.randomUUID();
-
-        request = new Request(
-                customerId.toString(),
-                vehicleId.toString(),
-                dealershipId.toString(),
-                serviceTypeId.toString(),
-                technicianId.toString(),
-                serviceBayId.toString(),
-                OffsetDateTime.parse("2026-11-05T09:00:00+07:00")
-        );
-
-        handler = new Handler(
-                new Validators(),
-                customerRepository,
-                vehicleRepository,
-                serviceTypeRepository,
-                serviceBayRepository,
-                appointmentRepository,
-                technicianRepository,
-                dealershipRepository,
-                scheduleValidator
-        );
-    }
-
-    @Test
-    void shouldReturnFailureWhenRequestIsNull() {
-
-        // Act
-        Result<Response> result = handler.handle(null).join();
-
-        // Assert
-        assertError(result, Errors.INVALID_REQUEST);
-
-        verifyNoInteractions(
-                customerRepository,
-                vehicleRepository,
-                dealershipRepository,
-                serviceTypeRepository,
-                technicianRepository,
-                serviceBayRepository,
-                appointmentRepository
-        );
-    }
+        @Mock
+        private BaseRepository<Customer, UUID> customerRepository;
+
+        @Mock
+        private BaseRepository<Vehicle, UUID> vehicleRepository;
+
+        @Mock
+        private BaseRepository<ServiceType, UUID> serviceTypeRepository;
+
+        @Mock
+        private ServiceBayRepository serviceBayRepository;
+
+        @Mock
+        private AppointmentRepository appointmentRepository;
+
+        @Mock
+        private TechnicianRepository technicianRepository;
+
+        @Mock
+        private DealershipRepository dealershipRepository;
+
+        @Mock
+        private AppointmentScheduleValidator scheduleValidator;
+
+        private Handler handler;
+
+        private UUID customerId;
+        private UUID vehicleId;
+        private UUID dealershipId;
+        private UUID serviceTypeId;
+        private UUID technicianId;
+        private UUID serviceBayId;
+
+        private Request request;
+
+        @BeforeEach
+        void setUp() {
+                customerId = UUID.randomUUID();
+                vehicleId = UUID.randomUUID();
+                dealershipId = UUID.randomUUID();
+                serviceTypeId = UUID.randomUUID();
+                technicianId = UUID.randomUUID();
+                serviceBayId = UUID.randomUUID();
+
+                request = new Request(
+                                customerId.toString(),
+                                vehicleId.toString(),
+                                dealershipId.toString(),
+                                serviceTypeId.toString(),
+                                technicianId.toString(),
+                                OffsetDateTime.parse("2026-11-05T09:00:00+07:00"));
 
-    @Test
-    void shouldReturnFailureWhenCustomerIdIsInvalid() {
+                handler = new Handler(
+                                new Validators(),
+                                customerRepository,
+                                vehicleRepository,
+                                serviceTypeRepository,
+                                serviceBayRepository,
+                                appointmentRepository,
+                                technicianRepository,
+                                dealershipRepository,
+                                scheduleValidator);
+        }
 
-        // Arrange
-        Request invalidRequest = new Request(
-                "invalid-uuid",
-                vehicleId.toString(),
-                dealershipId.toString(),
-                serviceTypeId.toString(),
-                technicianId.toString(),
-                serviceBayId.toString(),
-                request.startTime()
-        );
+        @Test
+        void shouldReturnFailureWhenRequestIsNull() {
+                Result<Response> result = handler.handle(null).join();
 
-        // Act
-        Result<Response> result =
-                handler.handle(invalidRequest).join();
+                assertError(result, Errors.INVALID_REQUEST);
 
-        // Assert
-        assertError(result, Errors.INVALID_CUSTOMER_ID);
+                verifyNoInteractions(
+                                customerRepository,
+                                vehicleRepository,
+                                dealershipRepository,
+                                serviceTypeRepository,
+                                technicianRepository,
+                                serviceBayRepository,
+                                appointmentRepository);
+        }
 
-        verifyNoInteractions(customerRepository);
-        verifyNoInteractions(appointmentRepository);
-    }
+        @Test
+        void shouldReturnFailureWhenCustomerIdIsInvalid() {
+                Request invalidRequest = new Request(
+                                "invalid-uuid",
+                                vehicleId.toString(),
+                                dealershipId.toString(),
+                                serviceTypeId.toString(),
+                                technicianId.toString(),
+                                request.startTime());
 
-    @Test
-    void shouldReturnFailureWhenCustomerDoesNotExist() {
+                Result<Response> result = handler.handle(invalidRequest).join();
 
-        // Arrange
-        when(customerRepository.findById(customerId))
-                .thenReturn(Optional.empty());
+                assertError(result, Errors.INVALID_CUSTOMER_ID);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                verifyNoInteractions(customerRepository);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        // Assert
-        assertError(result, Errors.CUSTOMER_NOT_FOUND);
+        @Test
+        void shouldReturnFailureWhenCustomerDoesNotExist() {
+                when(customerRepository.findById(customerId))
+                                .thenReturn(Optional.empty());
 
-        verify(customerRepository).findById(customerId);
-        verifyNoInteractions(vehicleRepository);
-        verifyNoInteractions(appointmentRepository);
-    }
+                Result<Response> result = handler.handle(request).join();
 
-    @Test
-    void shouldReturnFailureWhenCustomerIsDeleted() {
+                assertError(result, Errors.CUSTOMER_NOT_FOUND);
 
-        // Arrange
-        Customer customer = mock(Customer.class);
+                verifyNoInteractions(vehicleRepository);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        when(customer.getIsDeleted()).thenReturn(true);
+        @Test
+        void shouldReturnFailureWhenCustomerIsDeleted() {
+                Customer customer = mock(Customer.class);
 
-        when(customerRepository.findById(customerId))
-                .thenReturn(Optional.of(customer));
+                when(customer.getIsDeleted()).thenReturn(true);
+                when(customerRepository.findById(customerId))
+                                .thenReturn(Optional.of(customer));
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                Result<Response> result = handler.handle(request).join();
 
-        // Assert
-        assertError(result, Errors.CUSTOMER_NOT_FOUND);
+                assertError(result, Errors.CUSTOMER_NOT_FOUND);
 
-        verify(customerRepository).findById(customerId);
-        verifyNoInteractions(vehicleRepository);
-        verifyNoInteractions(appointmentRepository);
-    }
+                verifyNoInteractions(vehicleRepository);
+        }
 
-    @Test
-    void shouldReturnFailureWhenVehicleDoesNotExist() {
+        @Test
+        void shouldReturnFailureWhenVehicleDoesNotExist() {
+                mockCustomer();
 
-        // Arrange
-        mockCustomer();
+                when(vehicleRepository.findById(vehicleId))
+                                .thenReturn(Optional.empty());
 
-        when(vehicleRepository.findById(vehicleId))
-                .thenReturn(Optional.empty());
+                Result<Response> result = handler.handle(request).join();
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                assertError(result, Errors.VEHICLE_NOT_FOUND);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        // Assert
-        assertError(result, Errors.VEHICLE_NOT_FOUND);
+        @Test
+        void shouldReturnFailureWhenVehicleIsDeleted() {
+                mockCustomer();
 
-        verify(vehicleRepository).findById(vehicleId);
-        verifyNoInteractions(appointmentRepository);
-    }
+                Vehicle vehicle = mock(Vehicle.class);
+                when(vehicle.getIsDeleted()).thenReturn(true);
 
-    @Test
-    void shouldReturnFailureWhenVehicleIsDeleted() {
+                when(vehicleRepository.findById(vehicleId))
+                                .thenReturn(Optional.of(vehicle));
 
-        // Arrange
-        mockCustomer();
+                Result<Response> result = handler.handle(request).join();
 
-        Vehicle vehicle = mock(Vehicle.class);
+                assertError(result, Errors.VEHICLE_NOT_FOUND);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        when(vehicle.getIsDeleted()).thenReturn(true);
+        @Test
+        void shouldReturnFailureWhenVehicleDoesNotBelongToCustomer() {
+                mockCustomer();
 
-        when(vehicleRepository.findById(vehicleId))
-                .thenReturn(Optional.of(vehicle));
+                Vehicle vehicle = mock(Vehicle.class);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(vehicle.getCustomerId())
+                                .thenReturn(UUID.randomUUID());
 
-        // Assert
-        assertError(result, Errors.VEHICLE_NOT_FOUND);
+                when(vehicleRepository.findById(vehicleId))
+                                .thenReturn(Optional.of(vehicle));
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                Result<Response> result = handler.handle(request).join();
 
-    @Test
-    void shouldReturnFailureWhenVehicleDoesNotBelongToCustomer() {
+                assertError(
+                                result,
+                                Errors.VEHICLE_NOT_OWNED_BY_CUSTOMER);
+        }
 
-        // Arrange
-        mockCustomer();
+        @Test
+        void shouldReturnFailureWhenDealershipDoesNotExist() {
+                mockCustomer();
+                mockVehicle();
 
-        Vehicle vehicle = mock(Vehicle.class);
+                when(dealershipRepository.findById(dealershipId))
+                                .thenReturn(Optional.empty());
 
-        when(vehicle.getCustomerId())
-                .thenReturn(UUID.randomUUID());
+                Result<Response> result = handler.handle(request).join();
 
-        when(vehicleRepository.findById(vehicleId))
-                .thenReturn(Optional.of(vehicle));
+                assertError(result, Errors.DEALERSHIP_NOT_FOUND);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+        @Test
+        void shouldReturnFailureWhenDealershipIsDeleted() {
+                mockCustomer();
+                mockVehicle();
 
-        // Assert
-        assertError(
-                result,
-                Errors.VEHICLE_NOT_OWNED_BY_CUSTOMER
-        );
+                Dealership dealership = mock(Dealership.class);
+                when(dealership.getIsDeleted()).thenReturn(true);
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                when(dealershipRepository.findById(dealershipId))
+                                .thenReturn(Optional.of(dealership));
 
-    @Test
-    void shouldReturnFailureWhenDealershipDoesNotExist() {
+                Result<Response> result = handler.handle(request).join();
 
-        // Arrange
-        mockCustomer();
-        mockVehicle();
+                assertError(result, Errors.DEALERSHIP_NOT_FOUND);
+        }
 
-        when(dealershipRepository.findById(dealershipId))
-                .thenReturn(Optional.empty());
+        @Test
+        void shouldReturnFailureWhenServiceTypeDoesNotExist() {
+                mockCustomer();
+                mockVehicle();
+                mockDealership();
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(serviceTypeRepository.findById(serviceTypeId))
+                                .thenReturn(Optional.empty());
 
-        // Assert
-        assertError(result, Errors.DEALERSHIP_NOT_FOUND);
+                Result<Response> result = handler.handle(request).join();
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                assertError(result, Errors.SERVICE_TYPE_NOT_FOUND);
+        }
 
-    @Test
-    void shouldReturnFailureWhenDealershipIsDeleted() {
+        @Test
+        void shouldReturnFailureWhenServiceTypeIsDeleted() {
+                mockCustomer();
+                mockVehicle();
+                mockDealership();
 
-        // Arrange
-        mockCustomer();
-        mockVehicle();
+                ServiceType serviceType = mock(ServiceType.class);
+                when(serviceType.getIsDeleted()).thenReturn(true);
 
-        Dealership dealership = mock(Dealership.class);
+                when(serviceTypeRepository.findById(serviceTypeId))
+                                .thenReturn(Optional.of(serviceType));
 
-        when(dealership.getIsDeleted()).thenReturn(true);
+                Result<Response> result = handler.handle(request).join();
 
-        when(dealershipRepository.findById(dealershipId))
-                .thenReturn(Optional.of(dealership));
+                assertError(result, Errors.SERVICE_TYPE_NOT_FOUND);
+        }
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+        @Test
+        void shouldReturnFailureWhenServiceDurationIsZero() {
+                mockCustomer();
+                mockVehicle();
+                mockDealership();
+                mockServiceType(0);
 
-        // Assert
-        assertError(result, Errors.DEALERSHIP_NOT_FOUND);
+                Result<Response> result = handler.handle(request).join();
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                assertError(result, Errors.INVALID_SERVICE_DURATION);
+        }
 
-    @Test
-    void shouldReturnFailureWhenServiceTypeDoesNotExist() {
+        @Test
+        void shouldReturnFailureWhenServiceDurationIsNegative() {
+                mockCustomer();
+                mockVehicle();
+                mockDealership();
+                mockServiceType(-30);
 
-        // Arrange
-        mockCustomer();
-        mockVehicle();
-        mockDealership();
+                Result<Response> result = handler.handle(request).join();
 
-        when(serviceTypeRepository.findById(serviceTypeId))
-                .thenReturn(Optional.empty());
+                assertError(result, Errors.INVALID_SERVICE_DURATION);
+        }
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+        @Test
+        void shouldReturnFailureWhenTechnicianDoesNotExist() {
+                mockValidEntitiesBeforeTechnician();
 
-        // Assert
-        assertError(result, Errors.SERVICE_TYPE_NOT_FOUND);
+                when(technicianRepository.findById(technicianId))
+                                .thenReturn(Optional.empty());
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                Result<Response> result = handler.handle(request).join();
 
-    @Test
-    void shouldReturnFailureWhenServiceTypeIsDeleted() {
+                assertError(result, Errors.TECHNICIAN_NOT_FOUND);
+        }
 
-        // Arrange
-        mockCustomer();
-        mockVehicle();
-        mockDealership();
+        @Test
+        void shouldReturnFailureWhenTechnicianIsDeleted() {
+                // Arrange
+                mockValidEntitiesBeforeTechnician();
 
-        ServiceType serviceType = mock(ServiceType.class);
+                Technician technician = mock(Technician.class);
 
-        when(serviceType.getIsDeleted()).thenReturn(true);
+                when(technician.getIsDeleted()).thenReturn(true);
 
-        when(serviceTypeRepository.findById(serviceTypeId))
-                .thenReturn(Optional.of(serviceType));
+                when(technicianRepository.findById(technicianId))
+                                .thenReturn(Optional.of(technician));
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                // Act
+                Result<Response> result = handler.handle(request).join();
 
-        // Assert
-        assertError(result, Errors.SERVICE_TYPE_NOT_FOUND);
+                // Assert
+                assertError(result, Errors.TECHNICIAN_NOT_FOUND);
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                verifyNoInteractions(serviceBayRepository);
+        }
 
-    @Test
-    void shouldReturnFailureWhenServiceDurationIsZero() {
+        @Test
+        void shouldReturnFailureWhenTechnicianBelongsToAnotherDealership() {
+                // Arrange
+                mockValidEntitiesBeforeTechnician();
 
-        // Arrange
-        mockCustomer();
-        mockVehicle();
-        mockDealership();
+                Technician technician = mock(Technician.class);
 
-        mockServiceType(0);
+                when(technician.getActive()).thenReturn(true);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(technician.getDealershipId())
+                                .thenReturn(UUID.randomUUID());
 
-        // Assert
-        assertError(result, Errors.INVALID_SERVICE_DURATION);
+                when(technicianRepository.findById(technicianId))
+                                .thenReturn(Optional.of(technician));
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                // Act
+                Result<Response> result = handler.handle(request).join();
 
-    @Test
-    void shouldReturnFailureWhenServiceDurationIsNegative() {
+                // Assert
+                assertError(
+                                result,
+                                Errors.TECHNICIAN_NOT_IN_DEALERSHIP);
 
-        // Arrange
-        mockCustomer();
-        mockVehicle();
-        mockDealership();
+                verifyNoInteractions(serviceBayRepository);
+        }
 
-        mockServiceType(-30);
+        @Test
+        void shouldReturnFailureWhenTechnicianIsNotQualified() {
+                mockValidEntitiesBeforeTechnician();
+                mockTechnician();
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(technicianRepository.isQualifiedForServiceType(
+                                technicianId, serviceTypeId)).thenReturn(false);
 
-        // Assert
-        assertError(result, Errors.INVALID_SERVICE_DURATION);
+                Result<Response> result = handler.handle(request).join();
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                assertError(result, Errors.TECHNICIAN_NOT_QUALIFIED);
 
-    @Test
-    void shouldReturnFailureWhenTechnicianDoesNotExist() {
+                verifyNoInteractions(serviceBayRepository);
+        }
 
-        // Arrange
-        mockValidEntitiesBeforeTechnician();
+        @Test
+        void shouldReturnFailureWhenDatabaseThrowsException() {
+                when(customerRepository.findById(customerId))
+                                .thenThrow(
+                                                new DataAccessResourceFailureException(
+                                                                "Database unavailable"));
 
-        when(technicianRepository.findById(technicianId))
-                .thenReturn(Optional.empty());
+                Result<Response> result = handler.handle(request).join();
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                assertError(
+                                result,
+                                Errors.APPOINTMENT_CREATION_FAILED);
 
-        // Assert
-        assertError(result, Errors.TECHNICIAN_NOT_FOUND);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        verifyNoInteractions(appointmentRepository);
-    }
+        @Test
+        void shouldReturnFailureWhenNoServiceBaysExist() {
+                mockValidBookingPrerequisites();
 
-    @Test
-    void shouldReturnFailureWhenTechnicianIsDeleted() {
+                when(serviceBayRepository.findActiveByDealershipId(dealershipId))
+                                .thenReturn(List.of());
 
-        // Arrange
-        mockValidEntitiesBeforeTechnician();
+                Result<Response> result = handler.handle(request).join();
 
-        Technician technician = mock(Technician.class);
+                assertError(result, Errors.SERVICE_BAY_UNAVAILABLE);
 
-        when(technician.getIsDeleted()).thenReturn(true);
+                verify(serviceBayRepository)
+                                .findActiveByDealershipId(dealershipId);
 
-        when(technicianRepository.findById(technicianId))
-                .thenReturn(Optional.of(technician));
+                verify(appointmentRepository, never())
+                                .save(any(Appointment.class));
+        }
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+        @Test
+        void shouldReturnFailureWhenAllServiceBaysAreOccupied() {
+                mockValidBookingPrerequisites();
 
-        // Assert
-        assertError(result, Errors.TECHNICIAN_NOT_FOUND);
+                ServiceBay bay = mockServiceBay(serviceBayId);
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                when(serviceBayRepository.findActiveByDealershipId(dealershipId))
+                                .thenReturn(List.of(bay));
 
-    @Test
-    void shouldReturnFailureWhenTechnicianBelongsToAnotherDealership() {
+                when(appointmentRepository.existsServiceBayOverlap(
+                                eq(serviceBayId),
+                                any(Instant.class),
+                                any(Instant.class))).thenReturn(true);
 
-        // Arrange
-        mockValidEntitiesBeforeTechnician();
+                Result<Response> result = handler.handle(request).join();
 
-        Technician technician = mock(Technician.class);
+                assertError(result, Errors.SERVICE_BAY_UNAVAILABLE);
 
-        when(technician.getDealershipId())
-                .thenReturn(UUID.randomUUID());
+                verify(appointmentRepository, never())
+                                .save(any(Appointment.class));
+        }
 
-        when(technicianRepository.findById(technicianId))
-                .thenReturn(Optional.of(technician));
+        @Test
+        void shouldSelectNextServiceBayWhenFirstBayIsOccupied() {
+                mockValidBookingPrerequisites();
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                UUID secondBayId = UUID.randomUUID();
 
-        // Assert
-        assertError(
-                result,
-                Errors.TECHNICIAN_NOT_IN_DEALERSHIP
-        );
+                ServiceBay firstBay = mockServiceBay(serviceBayId);
+                ServiceBay secondBay = mockServiceBay(secondBayId);
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                when(serviceBayRepository.findActiveByDealershipId(dealershipId))
+                                .thenReturn(List.of(firstBay, secondBay));
 
-    @Test
-    void shouldReturnFailureWhenServiceBayDoesNotExist() {
+                when(appointmentRepository.existsServiceBayOverlap(
+                                eq(serviceBayId),
+                                any(Instant.class),
+                                any(Instant.class))).thenReturn(true);
 
-        // Arrange
-        mockValidEntitiesBeforeServiceBay();
+                when(appointmentRepository.existsServiceBayOverlap(
+                                eq(secondBayId),
+                                any(Instant.class),
+                                any(Instant.class))).thenReturn(false);
 
-        when(serviceBayRepository.findById(serviceBayId))
-                .thenReturn(Optional.empty());
+                // Stop immediately after selection to verify the chosen bay.
+                when(appointmentRepository.save(any(Appointment.class)))
+                                .thenAnswer(invocation -> {
+                                        Appointment appointment = invocation.getArgument(0);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                                        assertEquals(
+                                                        secondBayId,
+                                                        appointment.getServiceBayId());
 
-        // Assert
-        assertError(result, Errors.SERVICE_BAY_NOT_FOUND);
+                                        throw new DataAccessResourceFailureException(
+                                                        "Stop after verifying service bay assignment");
+                                });
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                Result<Response> result = handler.handle(request).join();
 
-    @Test
-    void shouldReturnFailureWhenServiceBayIsDeleted() {
+                assertError(result, Errors.APPOINTMENT_CREATION_FAILED);
 
-        // Arrange
-        mockValidEntitiesBeforeServiceBay();
+                verify(appointmentRepository)
+                                .save(argThat(appointment -> secondBayId.equals(appointment.getServiceBayId())));
+        }
 
-        ServiceBay serviceBay = mock(ServiceBay.class);
+        @Test
+        void shouldReturnFailureWhenTechnicianIsInactive() {
+                // Arrange
+                mockValidEntitiesBeforeTechnician();
 
-        when(serviceBay.getIsDeleted()).thenReturn(true);
+                Technician technician = mock(Technician.class);
 
-        when(serviceBayRepository.findById(serviceBayId))
-                .thenReturn(Optional.of(serviceBay));
+                when(technician.getActive()).thenReturn(false);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(technicianRepository.findById(technicianId))
+                                .thenReturn(Optional.of(technician));
 
-        // Assert
-        assertError(result, Errors.SERVICE_BAY_NOT_FOUND);
+                // Act
+                Result<Response> result = handler.handle(request).join();
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                // Assert
+                assertError(result, Errors.TECHNICIAN_INACTIVE);
 
-    @Test
-    void shouldReturnFailureWhenServiceBayBelongsToAnotherDealership() {
+                verifyNoInteractions(serviceBayRepository);
+                verifyNoInteractions(appointmentRepository);
+        }
 
-        // Arrange
-        mockValidEntitiesBeforeServiceBay();
+        // =========================================================
+        // Helpers
+        // =========================================================
 
-        ServiceBay serviceBay = mock(ServiceBay.class);
+        private void mockCustomer() {
+                Customer customer = mock(Customer.class);
 
-        when(serviceBay.getDealershipId())
-                .thenReturn(UUID.randomUUID());
+                when(customerRepository.findById(customerId))
+                                .thenReturn(Optional.of(customer));
+        }
 
-        when(serviceBayRepository.findById(serviceBayId))
-                .thenReturn(Optional.of(serviceBay));
+        private void mockVehicle() {
+                Vehicle vehicle = mock(Vehicle.class);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(vehicle.getCustomerId()).thenReturn(customerId);
 
-        // Assert
-        assertError(
-                result,
-                Errors.SERVICE_BAY_NOT_IN_DEALERSHIP
-        );
+                when(vehicleRepository.findById(vehicleId))
+                                .thenReturn(Optional.of(vehicle));
+        }
 
-        verifyNoInteractions(appointmentRepository);
-    }
+        private void mockDealership() {
+                Dealership dealership = mock(Dealership.class);
 
-    @Test
-    void shouldReturnFailureWhenTechnicianIsNotQualified() {
+                when(dealershipRepository.findById(dealershipId))
+                                .thenReturn(Optional.of(dealership));
+        }
 
-        // Arrange
-        mockValidEntitiesBeforeServiceBay();
-        mockServiceBay();
+        private void mockServiceType(int durationMinutes) {
+                ServiceType serviceType = mock(ServiceType.class);
 
-        when(technicianRepository.isQualifiedForServiceType(
-                technicianId, serviceTypeId
-        )).thenReturn(false);
+                when(serviceType.getDurationMinutes())
+                                .thenReturn(durationMinutes);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(serviceTypeRepository.findById(serviceTypeId))
+                                .thenReturn(Optional.of(serviceType));
+        }
 
-        // Assert
-        assertError(result, Errors.TECHNICIAN_NOT_QUALIFIED);
+        private void mockTechnician() {
+                Technician technician = mock(Technician.class);
 
-        verify(technicianRepository)
-                .isQualifiedForServiceType(
-                        technicianId, serviceTypeId
-                );
+                when(technician.getActive()).thenReturn(true);
 
-        verifyNoInteractions(appointmentRepository);
-    }
+                when(technician.getDealershipId())
+                                .thenReturn(dealershipId);
 
-    @Test
-    void shouldReturnFailureWhenDatabaseThrowsException() {
+                when(technicianRepository.findById(technicianId))
+                                .thenReturn(Optional.of(technician));
+        }
 
-        // Arrange
-        when(customerRepository.findById(customerId))
-                .thenThrow(
-                        new DataAccessResourceFailureException(
-                                "Database unavailable"
-                        )
-                );
+        private ServiceBay mockServiceBay(UUID bayId) {
+                ServiceBay bay = mock(ServiceBay.class);
 
-        // Act
-        Result<Response> result = handler.handle(request).join();
+                when(bay.getId()).thenReturn(bayId);
 
-        // Assert
-        assertError(
-                result,
-                Errors.APPOINTMENT_CREATION_FAILED
-        );
+                return bay;
+        }
 
-        verify(customerRepository).findById(customerId);
-        verifyNoInteractions(appointmentRepository);
-    }
+        private void mockValidEntitiesBeforeTechnician() {
+                mockCustomer();
+                mockVehicle();
+                mockDealership();
+                mockServiceType(45);
+        }
 
-    // -------------------------
-    // Test helpers
-    // -------------------------
+        private void mockValidBookingPrerequisites() {
+                mockValidEntitiesBeforeTechnician();
+                mockTechnician();
 
-    private void mockCustomer() {
+                when(technicianRepository.isQualifiedForServiceType(
+                                technicianId, serviceTypeId)).thenReturn(true);
 
-        Customer customer = mock(Customer.class);
+                var dealershipDetails = mock(
+                                DealershipRepository.DealershipDetailsData.class);
 
-        when(customerRepository.findById(customerId))
-                .thenReturn(Optional.of(customer));
-    }
+                when(dealershipDetails.timeZone())
+                                .thenReturn("Asia/Ho_Chi_Minh");
 
-    private void mockVehicle() {
+                when(dealershipRepository.findDetailsById(dealershipId))
+                                .thenReturn(Optional.of(dealershipDetails));
 
-        Vehicle vehicle = mock(Vehicle.class);
+                when(scheduleValidator.isDealershipAvailable(
+                                eq(dealershipDetails),
+                                any(Instant.class),
+                                any(Instant.class))).thenReturn(true);
 
-        when(vehicle.getCustomerId())
-                .thenReturn(customerId);
+                var technicianDetails = mock(
+                                TechnicianRepository.TechnicianDetailsData.class);
 
-        when(vehicleRepository.findById(vehicleId))
-                .thenReturn(Optional.of(vehicle));
-    }
+                when(technicianRepository.findDetailsByTechnicianId(technicianId))
+                                .thenReturn(Optional.of(technicianDetails));
 
-    private void mockDealership() {
+                when(scheduleValidator.isTechnicianAvailable(
+                                eq(technicianDetails),
+                                any(java.time.ZoneId.class),
+                                any(Instant.class),
+                                any(Instant.class))).thenReturn(true);
 
-        Dealership dealership = mock(Dealership.class);
+                // Mockito defaults boolean return values to false,
+                // so technician overlap is false unless explicitly stubbed.
+        }
 
-        when(dealershipRepository.findById(dealershipId))
-                .thenReturn(Optional.of(dealership));
-    }
+        private void assertError(
+                        Result<Response> result,
+                        Error expected) {
+                assertTrue(result.isFailure());
 
-    private void mockServiceType(int durationMinutes) {
+                Result.Failure<?> failure = (Result.Failure<?>) result;
 
-        ServiceType serviceType = mock(ServiceType.class);
+                assertFalse(failure.errorDetails().errors().isEmpty());
 
-        when(serviceType.getDurationMinutes())
-                .thenReturn(durationMinutes);
+                Error actual = failure.errorDetails().errors().get(0);
 
-        when(serviceTypeRepository.findById(serviceTypeId))
-                .thenReturn(Optional.of(serviceType));
-    }
-
-    private void mockTechnician() {
-
-        Technician technician = mock(Technician.class);
-
-        when(technician.getDealershipId())
-                .thenReturn(dealershipId);
-
-        when(technicianRepository.findById(technicianId))
-                .thenReturn(Optional.of(technician));
-    }
-
-    private void mockServiceBay() {
-
-        ServiceBay serviceBay = mock(ServiceBay.class);
-
-        when(serviceBay.getDealershipId())
-                .thenReturn(dealershipId);
-
-        when(serviceBayRepository.findById(serviceBayId))
-                .thenReturn(Optional.of(serviceBay));
-    }
-
-    private void mockValidEntitiesBeforeTechnician() {
-
-        mockCustomer();
-        mockVehicle();
-        mockDealership();
-        mockServiceType(45);
-    }
-
-    private void mockValidEntitiesBeforeServiceBay() {
-
-        mockValidEntitiesBeforeTechnician();
-        mockTechnician();
-    }
-
-    private void assertError(
-            Result<Response> result,
-            Error expected
-    ) {
-
-        assertTrue(result.isFailure());
-
-        Result.Failure<?> failure =
-                (Result.Failure<?>) result;
-
-        assertFalse(failure.errorDetails().errors().isEmpty());
-
-        Error actual =
-                failure.errorDetails().errors().get(0);
-
-        assertEquals(expected.code(), actual.code());
-        assertEquals(expected.type(), actual.type());
-    }
+                assertEquals(expected.code(), actual.code());
+                assertEquals(expected.type(), actual.type());
+        }
 }
-
