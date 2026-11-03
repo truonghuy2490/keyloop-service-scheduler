@@ -68,9 +68,15 @@ public interface TechnicianRepository extends BaseRepository<Technician, UUID>  
     ) {
     }
 
-    boolean isQualifiedForServiceType(
-        UUID technicianId,
-        UUID serviceTypeId
-);
+        boolean isQualifiedForServiceType(
+                UUID technicianId,
+                UUID serviceTypeId
+        );
+
+        List<Technician> findQualifiedTechnicians(
+                UUID dealershipId,
+                UUID serviceTypeId,
+                UUID technicianId
+        );
 
 }

@@ -3,6 +3,8 @@ package com.keyloop.scheduler.persistence.adapter;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -93,4 +95,20 @@ public class ServiceBayRepositoryAdapter
                 pageSize
         );
     }
+    
+    
+        @Override
+        @Transactional(readOnly = true)
+        public List<ServiceBay> findActiveByDealershipId(
+                UUID dealershipId
+        ) {
+        return serviceBayRepository
+                .findAllByDealershipIdAndActiveTrueAndDeletedFalse(
+                        dealershipId
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+        }
+
 }

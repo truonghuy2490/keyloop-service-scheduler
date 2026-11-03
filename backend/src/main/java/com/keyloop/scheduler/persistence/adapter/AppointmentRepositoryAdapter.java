@@ -7,6 +7,7 @@ import com.keyloop.scheduler.persistence.repository.AppointmentJpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -101,6 +102,23 @@ public class AppointmentRepositoryAdapter
                 .version(source.getVersion())
                 .cancellationReason(source.getCancellationReason())
                 .build();
+    }
+
+    @Override
+    public List<Appointment> findActiveAppointmentsByDealershipAndTimeRange(
+            UUID dealershipId,
+            Instant startTime,
+            Instant endTime
+    ) {
+        return appointmentRepository
+                .findActiveAppointmentsByDealershipAndTimeRange(
+                        dealershipId,
+                        startTime,
+                        endTime
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
 }

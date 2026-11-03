@@ -330,4 +330,56 @@ public boolean isQualifiedForServiceType(
     return count != null && count > 0;
 }
 
+    
+@Override
+@Transactional(readOnly = true)
+public List<Technician> findQualifiedTechnicians(
+        UUID dealershipId,
+        UUID serviceTypeId,
+        UUID technicianId
+) {
+    return jdbcTemplate.query(
+            """
+            SELECT
+                t.id,
+                t.dealership_id,
+                t.full_name,
+                t.active,
+                t.is_deleted,
+                t.created_at,
+                t.updated_at
+            FROM technician t
+            INNER JOIN technician_qualification tq
+                ON tq.technician_id = t.id
+            INNER JOIN service_type st
+                ON st.id = tq.service_type_id
+                AND st.is_deleted = false
+            WHERE t.dealership_id = ?
+              AND tq.service_type_id = ?
+              AND t.is_deleted = false
+              AND (
+                    ? IS NULL
+                    OR t.id = ?
+              )
+            ORDER BY t.full_name
+            """,
+            (rs, rowNum) -> Technician.builder()
+                    .id(rs.getObject("id", UUID.class))
+                    .dealershipId(
+                            rs.getObject("dealership_id", UUID.class)
+                    )
+                    .fullName(rs.getString("full_name"))
+                    .active(rs.getBoolean("active"))
+                    .isDeleted(rs.getBoolean("is_deleted"))
+                    .createdAt(getInstant(rs, "created_at"))
+                    .updatedAt(getInstant(rs, "updated_at"))
+                    .build(),
+            dealershipId,
+            serviceTypeId,
+            technicianId,
+            technicianId
+    );
+}
+
+
 }
