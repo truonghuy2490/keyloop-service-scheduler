@@ -7,11 +7,10 @@
 trigger:
   branches:
     include:
-      - main
+      - chore/deployment-setup
   paths:
     include:
-      - backend/*
-      - backend/**/*
+      - backend/**
       - azure-pipelines.yml
 
 pool:
@@ -85,84 +84,76 @@ stages:
               artifact: backend-package
               publishLocation: pipeline
 
-  # STAGE 2: CD - SIMULATE AZURE APP SERVICE
-  - stage: MockDeploy
-    displayName: Simulate Azure Deployment
-    dependsOn: Build
-    condition: succeeded()
+  
+# STAGE 2: CD - DEPLOY TO AZURE APP SERVICE
+- stage: Deploy
+  displayName: Deploy Backend to Azure
+  dependsOn: Build
+  condition: succeeded()
 
-    jobs:
-      - job: DeploySimulation
-        displayName: Simulate Azure App Service Creation
+  jobs:
+    - deployment: DeployBackend
+      displayName: Deploy Spring Boot Application
+      environment: development
 
-        steps:
-          # Download artifact from Build stage
-          - download: current
-            artifact: backend-package
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              # 1. Download artifact from Build stage
+              - download: current
+                artifact: backend-package
 
-          # Simulate Azure Portal resource creation and deployment
-          - script: |
-              set -eu
+              # 2. Verify deployment artifact
+              - script: |
+                  set -eu
 
-              ARTIFACT_DIR="$(Pipeline.Workspace)/backend-package"
-              JAR_FILE="$ARTIFACT_DIR/app.jar"
+                  JAR_FILE="$(Pipeline.Workspace)/backend-package/app.jar"
 
-              echo "=========================================="
-              echo "    AZURE APP SERVICE DEPLOYMENT"
-              echo "          SIMULATION MODE"
-              echo "=========================================="
+                  if [ ! -s "$JAR_FILE" ]; then
+                    echo "ERROR: Backend JAR not found."
+                    exit 1
+                  fi
 
-              # Step 1: Validate artifact
-              echo ""
-              echo "[1/5] Validating deployment package..."
+                  echo "Backend JAR found:"
+                  ls -lh "$JAR_FILE"
+                displayName: Verify Backend Artifact
 
-              if [ ! -s "$JAR_FILE" ]; then
-                echo "ERROR: Backend JAR not found or empty."
-                exit 1
-              fi
+              # 3. Deploy JAR to Azure App Service
+              - task: AzureWebApp@1
+                displayName: Deploy to Azure App Service
+                inputs:
+                  azureSubscription: 'sc-service-scheduler-azure'
+                  appType: 'webAppLinux'
+                  appName: 'service-scheduler-demo-huy'
+                  package: '$(Pipeline.Workspace)/backend-package/app.jar'
+                  deploymentMethod: 'auto'
 
-              ls -lh "$JAR_FILE"
-              echo "Artifact validation successful."
+              # 4. Verify deployed application
+              - script: |
+                  set -eu
 
-              # Step 2: Simulate creating Resource Group
-              echo ""
-              echo "[2/5] Creating Azure Resource Group..."
-              echo "Resource Group: rg-keyloop-scheduler-dev"
-              echo "Region: Southeast Asia"
-              echo "Status: Simulated"
+                  URL="https://service-scheduler-demo-huy.azurewebsites.net/actuator/health"
 
-              # Step 3: Simulate creating App Service Plan
-              echo ""
-              echo "[3/5] Creating Azure App Service Plan..."
-              echo "Plan Name: asp-keyloop-scheduler"
-              echo "Operating System: Linux"
-              echo "Pricing Tier: Free / F1 (example)"
-              echo "Status: Simulated"
+                  echo "Waiting for Spring Boot startup..."
 
-              # Step 4: Simulate creating Web App
-              echo ""
-              echo "[4/5] Creating Azure App Service..."
-              echo "App Name: keyloop-scheduler-api"
-              echo "Runtime Stack: Java 21"
-              echo "Web Server: Embedded Spring Boot"
-              echo "Status: Simulated"
+                  for i in $(seq 1 12); do
+                    if curl --fail --silent --show-error \
+                      --max-time 20 "$URL" \
+                      -o /tmp/health.json; then
 
-              # Step 5: Simulate application deployment
-              echo ""
-              echo "[5/5] Deploying Spring Boot application..."
-              echo "Uploading app.jar..."
-              echo "Starting application..."
-              echo "Checking application deployment..."
+                      cat /tmp/health.json
 
-              echo ""
-              echo "=========================================="
-              echo "    DEPLOYMENT SIMULATION SUCCESSFUL"
-              echo "=========================================="
-              echo "Application: Keyloop Service Scheduler"
-              echo "Resource Group: rg-keyloop-scheduler-dev"
-              echo "App Service: keyloop-scheduler-api"
-              echo "Runtime: Java 21"
-              echo "Deployment Status: SUCCESS"
-              echo ""
-              echo "NOTE: No actual Azure resources were created."
-            displayName: Simulate Azure App Service Deployment
+                      if grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health.json; then
+                        echo "Backend is healthy."
+                        exit 0
+                      fi
+                    fi
+
+                    echo "Attempt $i failed. Retrying in 15 seconds..."
+                    sleep 15
+                  done
+
+                  echo "ERROR: Backend health check failed."
+                  exit 1
+                displayName: Verify Backend Health

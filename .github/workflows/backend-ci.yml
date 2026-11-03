@@ -5,6 +5,7 @@ name: Backend CI
     branches:
       - main
       - 'feature/**'
+      - 'chore/deployment-setup'
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
