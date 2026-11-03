@@ -1,87 +1,166 @@
 
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Building2, Search } from "lucide-react";
 
 import { useGetDealershipsQuery } from "@/features/dealerships/dealership.api";
+import type { Dealership } from "@/features/dealerships/dealership.types";
+
 import DealershipCard from "./dealership-card";
 import Pagination from "@/features/shared/components/ui/Pagination";
 import SearchInput from "@/features/shared/components/ui/Search";
+
+const PAGE_SIZE = 5;
+const FETCH_PAGE_SIZE = 100;
 
 export default function DealershipList() {
   const [pageNumber, setPageNumber] = useState(1);
   const [keyword, setKeyword] = useState("");
 
-  const pageSize = 5;
+  // API pagination state
+  const [fetchPage, setFetchPage] = useState(1);
+
+  const [loadedPages, setLoadedPages] = useState<
+    Record<number, Dealership[]>
+  >({});
 
   const {
-    data,
-    error,
+    currentData: data,
     isLoading,
     isFetching,
+    isError,
     refetch,
-  } = useGetDealershipsQuery({ pageNumber, pageSize });
+  } = useGetDealershipsQuery({
+    pageNumber: fetchPage,
+    pageSize: FETCH_PAGE_SIZE,
+  });
 
-  const normalizedKeyword = keyword.trim().toLowerCase();
+  // Store each fetched API page.
+  useEffect(() => {
+    if (!data || isFetching) return;
 
-  const filteredDealerships = useMemo(() => {
-    const dealerships = data?.items ?? [];
+    const responsePage = data.pageNumber;
 
-    if (!normalizedKeyword) {
-      return dealerships;
+    setLoadedPages((previous) => {
+      if (previous[responsePage]) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        [responsePage]: data.items,
+      };
+    });
+  }, [data, isFetching]);
+
+  // Total API pages.
+  const apiTotalPages = data?.totalPages ?? 0;
+
+  // Check whether all pages have been loaded.
+  const isFullyLoaded =
+    data !== undefined &&
+    Array.from(
+      { length: apiTotalPages },
+      (_, index) => index + 1,
+    ).every((page) => loadedPages[page] !== undefined);
+
+  // Fetch next API page automatically.
+  useEffect(() => {
+    if (
+      !data ||
+      isFetching ||
+      isFullyLoaded ||
+      fetchPage >= data.totalPages
+    ) {
+      return;
     }
 
-    return dealerships.filter((dealership) => {
-      const searchableFields = [
-        dealership.name,
-        dealership.address,
-        dealership.phone,
-        dealership.email,
-      ];
+    // Wait until the current page has been stored.
+    if (!loadedPages[fetchPage]) {
+      return;
+    }
 
-      return searchableFields.some((field) =>
-        field?.toLowerCase().includes(normalizedKeyword),
+    setFetchPage((previous) => previous + 1);
+  }, [
+    data,
+    isFetching,
+    isFullyLoaded,
+    fetchPage,
+    loadedPages,
+  ]);
+
+  // Combine all loaded API pages.
+  const dealerships = useMemo(() => {
+    const merged = new Map<string, Dealership>();
+
+    Object.keys(loadedPages)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .forEach((page) => {
+        loadedPages[page].forEach((dealership) => {
+          merged.set(dealership.id, dealership);
+        });
+      });
+
+    return Array.from(merged.values());
+  }, [loadedPages]);
+
+  // Search across the entire dealership list.
+  const filteredDealerships = useMemo(() => {
+    const normalizedKeyword = keyword.trim().toLowerCase();
+
+    return dealerships
+      .filter((dealership) => {
+        if (!normalizedKeyword) return true;
+
+        const searchableFields = [
+          dealership.name,
+          dealership.address,
+          dealership.phone,
+          dealership.email,
+        ];
+
+        return searchableFields.some((field) =>
+          field
+            ?.toLowerCase()
+            .includes(normalizedKeyword),
+        );
+      })
+      .sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? ""),
       );
-    });
-  }, [data?.items, normalizedKeyword]);
+  }, [dealerships, keyword]);
+
+  // Calculate pagination AFTER filtering.
+  const totalCount = filteredDealerships.length;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const currentPage = Math.max(
+    1,
+    Math.min(pageNumber, totalPages || 1),
+  );
+
+  const paginatedDealerships = useMemo(() => {
+    const startIndex = (currentPage - 1) * PAGE_SIZE;
+
+    return filteredDealerships.slice(
+      startIndex,
+      startIndex + PAGE_SIZE,
+    );
+  }, [filteredDealerships, currentPage]);
 
   const handleSearch = (value: string) => {
     setKeyword(value);
     setPageNumber(1);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-60 items-center justify-center">
-        <span className="loading loading-spinner loading-lg text-primary" />
-      </div>
-    );
-  }
+  const handleRetry = () => {
+    // Retry the failed API page.
+    refetch();
+  };
 
-  if (error) {
-    return (
-      <div className="rounded-xl border border-error/30 bg-base-100 p-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-semibold text-error">
-              Failed to load dealerships
-            </h2>
-            <p className="mt-1 text-sm text-base-content/60">
-              Please check your connection and try again.
-            </p>
-          </div>
-
-          <button
-            className="btn btn-outline btn-error btn-sm"
-            onClick={() => refetch()}
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const isLoadingAll = isLoading || !isFullyLoaded;
 
   return (
     <section className="space-y-6">
@@ -89,7 +168,7 @@ export default function DealershipList() {
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Building2 size={21} />
             </div>
 
@@ -112,32 +191,62 @@ export default function DealershipList() {
         </div>
       </div>
 
-      {/* Result Summary */}
+      {/* Results Summary */}
       <div className="flex min-h-8 items-center justify-between border-b border-base-300 pb-3">
         <div className="flex items-center gap-2 text-sm text-base-content/70">
-          {normalizedKeyword ? (
+          {keyword.trim() ? (
             <>
               <Search size={15} />
               <span>
-                {filteredDealerships.length} matching dealerships on this page
+                {isFullyLoaded
+                  ? `${totalCount} matching dealerships`
+                  : "Loading dealerships..."}
               </span>
             </>
           ) : (
             <span>
-              {data?.totalCount ?? 0} dealerships
+              {isFullyLoaded
+                ? `${totalCount} dealerships`
+                : "Loading dealerships..."}
             </span>
           )}
         </div>
 
-        {isFetching && (
+        {isLoadingAll && !isError && (
           <span className="loading loading-spinner loading-sm text-primary" />
         )}
       </div>
 
-      {/* Dealership Cards */}
-      {filteredDealerships.length > 0 ? (
+      {/* Content */}
+      {isError ? (
+        <div className="rounded-xl border border-error/30 bg-base-100 p-6">
+          <h2 className="font-semibold text-error">
+            Failed to load dealerships
+          </h2>
+
+          <p className="mt-1 text-sm text-base-content/60">
+            Please check your connection and try again.
+          </p>
+
+          <button
+            type="button"
+            className="btn btn-outline btn-error btn-sm mt-4"
+            onClick={handleRetry}
+          >
+            Retry
+          </button>
+        </div>
+      ) : isLoadingAll ? (
+        <div className="flex min-h-60 flex-col items-center justify-center gap-3">
+          <span className="loading loading-spinner loading-lg text-primary" />
+
+          <p className="text-sm text-base-content/60">
+            Loading all dealerships...
+          </p>
+        </div>
+      ) : paginatedDealerships.length > 0 ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredDealerships.map((dealership) => (
+          {paginatedDealerships.map((dealership) => (
             <DealershipCard
               key={dealership.id}
               dealership={dealership}
@@ -146,8 +255,8 @@ export default function DealershipList() {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-base-300 bg-base-100 px-6 py-16 text-center">
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            {normalizedKeyword ? (
+          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            {keyword.trim() ? (
               <Search size={25} />
             ) : (
               <Building2 size={25} />
@@ -155,19 +264,20 @@ export default function DealershipList() {
           </div>
 
           <h3 className="font-semibold text-base-content">
-            {normalizedKeyword
+            {keyword.trim()
               ? "No matching dealerships"
               : "No dealerships found"}
           </h3>
 
           <p className="mt-2 max-w-sm text-sm text-base-content/60">
-            {normalizedKeyword
+            {keyword.trim()
               ? "Try searching with a different keyword."
               : "There are currently no dealerships available."}
           </p>
 
-          {normalizedKeyword && (
+          {keyword.trim() && (
             <button
+              type="button"
               className="btn btn-outline btn-primary btn-sm mt-5"
               onClick={() => handleSearch("")}
             >
@@ -178,22 +288,25 @@ export default function DealershipList() {
       )}
 
       {/* Pagination */}
-      {!normalizedKeyword && data && data.totalPages > 1 && (
+      {!isError && isFullyLoaded && totalPages > 1 && (
         <div className="flex flex-col gap-4 border-t border-base-300 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-base-content/60">
-            Page {data.pageNumber} of {data.totalPages}
+            Page {currentPage} of {totalPages}
             <span className="mx-2">—</span>
-            Total {data.totalCount} items
+            Total {totalCount} items
           </p>
 
           <Pagination
-            pageNumber={data.pageNumber}
-            totalPages={data.totalPages}
-            pageSize={data.pageSize}
-            totalCount={data.totalCount}
-            hasPreviousPage={data.pageNumber > 1}
-            hasNextPage={data.pageNumber < data.totalPages}
+            pageNumber={currentPage}
+            pageSize={PAGE_SIZE}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            hasPreviousPage={currentPage > 1}
+            hasNextPage={currentPage < totalPages}
             onPageChange={setPageNumber}
+            btnPreviousPageTestId="btnPreviousDealershipPage"
+            btnNextPageTestId="btnNextDealershipPage"
+            btnCurrentPageTestId="btnCurrentDealershipPage"
           />
         </div>
       )}

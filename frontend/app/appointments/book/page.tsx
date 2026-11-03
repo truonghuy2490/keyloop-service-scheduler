@@ -1,4 +1,5 @@
-import DealershipList from "@/features/dealerships/components/dealership-list";
+
+import PickDealershipList from "@/features/dealerships/components/pick-dealership-list";
 
 export default function BookAppointmentsPage() {
   return (
@@ -14,7 +15,7 @@ export default function BookAppointmentsPage() {
           </p>
         </div>
 
-        <DealershipList />
+        <PickDealershipList />
       </div>
     </main>
   );

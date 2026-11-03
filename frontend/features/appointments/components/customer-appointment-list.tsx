@@ -16,19 +16,16 @@ import {
     Inbox,
     ArrowDownUp,
     Ban,
+    UserRound,
+    Plus,
 } from "lucide-react";
 
-import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
+import { useAppSelector } from "@/lib/redux/hooks";
 import { useGetCustomerAppointmentsQuery } from "@/features/appointments/appointment.api";
 import type { CustomerAppointment } from "@/features/appointments/appointment.types";
 import Pagination from "@/features/shared/components/ui/Pagination";
 import ConfirmModal from "@/features/shared/components/ui/ConfirmModal";
-import {
-    enqueueToast,
-    ToastType,
-} from "@/features/shared/toast.slice";
 import Link from "next/link";
-import { Plus } from "lucide-react";
 
 const PAGE_SIZE = 10;
 type AppointmentSort = "upcoming" | "newest" | "oldest";
@@ -252,27 +249,15 @@ function AppointmentRow({
 }
 
 export default function CustomerAppointmentList() {
-    const dispatch = useAppDispatch();
-
     const currentCustomer = useAppSelector(
         (state) => state.customer.currentCustomer,
     );
 
+    const [showProfileModal, setShowProfileModal] = useState(true);
     const [pageNumber, setPageNumber] = useState(1);
     const [sort, setSort] = useState<AppointmentSort>("upcoming");
     const [cancelNoticeAppointment, setCancelNoticeAppointment] = useState<CustomerAppointment | null>(null);
     const now = Date.now();
-
-    useEffect(() => {
-        if (!currentCustomer) {
-            dispatch(
-                enqueueToast({
-                    message: "Please select a profile first to view your appointments.",
-                    type: ToastType.Error,
-                }),
-            );
-        }
-    }, [currentCustomer, dispatch]);
 
     useEffect(() => {
         setPageNumber(1);
@@ -305,7 +290,51 @@ export default function CustomerAppointmentList() {
     );
 
     if (!currentCustomer) {
-        return null;
+        return (
+            <>
+                <section className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-base-300 bg-base-100 p-8 text-center shadow-sm">
+                    <div className="flex size-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <UserRound size={30} />
+                    </div>
+                    <h2 className="mt-5 text-xl font-bold">No Customer Profile Selected</h2>
+                    <p className="mt-2 max-w-md text-sm text-base-content/60">
+                        Please select a customer profile from the navigation bar
+                        to view your appointments.
+                    </p>
+                    <button
+                        type="button"
+                        className="btn btn-primary mt-5"
+                        onClick={() => setShowProfileModal(true)}
+                    >
+                        How to Select a Profile
+                    </button>
+                </section>
+
+                <ConfirmModal
+                    isOpen={showProfileModal}
+                    onClose={() => setShowProfileModal(false)}
+                    variant="info"
+                    title="Select a Customer Profile"
+                    body={
+                        <div className="space-y-3">
+                            <p>
+                                To view your service appointments, please select a
+                                customer profile first.
+                            </p>
+                            <p>
+                                Click the profile icon in the top-right corner
+                                of the navigation bar to choose your profile.
+                            </p>
+                        </div>
+                    }
+                    yesButtonLabel="Got It"
+                    noButtonLabel="Not Now"
+                    onYes={() => setShowProfileModal(false)}
+                    onNo={() => setShowProfileModal(false)}
+                    modalTestId="dlgSelectCustomerProfile"
+                />
+            </>
+        );
     }
 
     if (isLoading || (isFetching && !data)) {

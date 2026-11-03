@@ -1,115 +1,198 @@
+
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-import { APP_ROUTES, APP_LABELS } from "@/lib/api/routes";
+import {
+  CalendarDays,
+  ChevronDown,
+  Home,
+  Building2,
+  Menu,
+  Wrench,
+} from "lucide-react";
 
 import { useAppSelector } from "@/lib/redux/hooks";
-
-import { Home } from "lucide-react";
 import NavbarProfile from "./NavbarProfile";
 
-interface BreadcrumbItem {
+interface NavigationItem {
   label: string;
   href: string;
+  icon: React.ComponentType<{
+    size?: number;
+    className?: string;
+  }>;
 }
 
-const getBreadcrumbs = (path: string): BreadcrumbItem[] => {
-  if (!path || path === APP_ROUTES.HOME) {
-    return [{ label: "Home", href: APP_ROUTES.HOME }];
-  }
-
-  const parentRoute = Object.values(APP_ROUTES).find(
-    (route) =>
-      route !== APP_ROUTES.HOME &&
-      path.startsWith(route) &&
-      (path === route || path.startsWith(`${route}/`)),
-  );
-
-  if (!parentRoute) {
-    return [{ label: "Home", href: APP_ROUTES.HOME }];
-  }
-
-  const routeConfig = APP_LABELS[parentRoute];
-
-  const breadcrumbs: BreadcrumbItem[] = [
-    {
-      label: routeConfig?.parentLabel ?? "Section",
-      href: parentRoute,
-    },
-  ];
-
-  const lowerPath = path.toLowerCase();
-
-  if (lowerPath.includes("/create")) {
-    breadcrumbs.push({
-      label: `Create New ${routeConfig?.itemLabel ?? "Item"}`,
-      href: path,
-    });
-  } else if (lowerPath.includes("/edit")) {
-    breadcrumbs.push({
-      label: `Edit ${routeConfig?.itemLabel ?? "Item"}`,
-      href: path,
-    });
-  } else if (path !== parentRoute) {
-    breadcrumbs.push({
-      label: routeConfig?.itemLabel ?? "Details",
-      href: path,
-    });
-  }
-
-  return breadcrumbs;
-};
+const navigationItems: NavigationItem[] = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: Home,
+  },
+  {
+    label: "Dealerships",
+    href: "/dealerships",
+    icon: Building2,
+  },
+  {
+    label: "My Appointments",
+    href: "/appointments",
+    icon: CalendarDays,
+  },
+];
 
 export default function Navbar() {
   const pathname = usePathname();
-  const breadcrumbs = getBreadcrumbs(pathname || "");
-  // Get selected customer from Redux Persist
+
   const currentCustomer = useAppSelector(
     (state) => state.customer.currentCustomer,
   );
+
+  // Check whether a customer profile is selected
+  const hasSelectedCustomer = Boolean(currentCustomer?.id);
+
+  const customerOnlyRoutes = [
+    "/dashboard",
+    "/appointments",
+  ];
+
+  const visibleNavigationItems = navigationItems.filter(
+    (item) =>
+      hasSelectedCustomer ||
+      !customerOnlyRoutes.includes(item.href),
+  );
+
+  const firstName = currentCustomer?.fullName
+    ?.trim()
+    .split(/\s+/)
+    .at(-1);
+
+  const isActive = (href: string) => {
+    if (href === "/") {
+      return pathname === "/";
+    }
+
+    if (href === "/appointments") {
+      return (
+        pathname === "/appointments" ||
+        (pathname.startsWith("/appointments/") &&
+          !pathname.startsWith("/appointments/book"))
+      );
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   return (
-    <header className="navbar sticky top-0 z-40 h-17.5 w-full justify-between bg-primary px-4 text-primary-content shadow-sm sm:px-8">
-      {/* Left - Breadcrumbs */}
-      <div className="breadcrumbs min-w-0 text-sm font-semibold sm:text-base">
-        <ul className="flex-nowrap">
-          {breadcrumbs.map((crumb, index) => {
-            const isLast = index === breadcrumbs.length - 1;
+    <header className="sticky top-0 z-40 w-full border-b border-primary-content/10 bg-primary text-primary-content shadow-sm">
+      <div className="navbar mx-auto min-h-17.5 max-w-7xl gap-4 px-4 sm:px-6 lg:px-8">
+        {/* Left: Mobile menu + Brand */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-none">
+          <div className="dropdown md:hidden">
+            <div
+              tabIndex={0}
+              role="button"
+              aria-label="Open navigation menu"
+              className="btn btn-ghost btn-square btn-sm border-0 text-primary-content hover:bg-primary-content/10"
+            >
+              <Menu size={22} />
+            </div>
+
+            <ul
+              tabIndex={0}
+              className="menu dropdown-content z-50 mt-3 w-64 rounded-xl border border-base-300 bg-base-100 p-2 text-base-content shadow-xl"
+            >
+              {visibleNavigationItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.href);
+
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={
+                        active
+                          ? "bg-primary/10 font-semibold text-primary"
+                          : ""
+                      }
+                    >
+                      <Icon size={18} />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-3 rounded-lg transition-opacity hover:opacity-90"
+            aria-label="Service Scheduler Home"
+          >
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-content/15">
+              <Wrench size={21} />
+            </div>
+
+            <div className="min-w-0 leading-tight">
+              <span className="block text-base font-bold tracking-tight">
+                Keyloop
+              </span>
+
+              <span className="block truncate text-xs text-primary-content/75">
+                Service Scheduler
+              </span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Center: Desktop navigation */}
+        <nav
+          aria-label="Main navigation"
+          className="hidden flex-1 items-center justify-center gap-1 md:flex"
+        >
+          {visibleNavigationItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
 
             return (
-              <li key={`${crumb.href}-${index}`}>
-                {isLast ? (
-                  <span className="flex items-center gap-2">
-                    {index === 0 && <Home size={16} />}
-                    {crumb.label}
-                  </span>
-                ) : (
-                  <Link
-                    href={crumb.href}
-                    prefetch={false}
-                    className="text-primary-content/70 transition-colors hover:text-primary-content"
-                  >
-                    {crumb.label}
-                  </Link>
-                )}
-              </li>
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "flex items-center gap-2 rounded-lg px-4 py-2.5",
+                  "text-sm font-medium transition-colors",
+                  active
+                    ? "bg-primary-content/15 text-primary-content"
+                    : "text-primary-content/75 hover:bg-primary-content/10 hover:text-primary-content",
+                ].join(" ")}
+              >
+                <Icon size={17} />
+                {item.label}
+              </Link>
             );
           })}
-        </ul>
-      </div>
+        </nav>
 
-      {/* Right - Customer Information */}
-      <div className="flex shrink-0 items-center gap-3">
-        {currentCustomer && (
-          <div className="hidden text-right sm:block">
-            <p className="max-w-52 truncate text-sm font-medium">
-              Hello, {currentCustomer.fullName}!
-            </p>
-          </div>
-        )}
+        {/* Right: Customer information */}
+        <div className="flex shrink-0 items-center gap-3">
+          {currentCustomer && (
+            <div className="hidden text-right md:block">
+              <p className="max-w-44 truncate text-sm font-semibold">
+                Hello, {firstName || "Customer"}!
+              </p>
 
-        <NavbarProfile />
+              <p className="text-xs text-primary-content/70">
+                Welcome back
+              </p>
+            </div>
+          )}
+
+          <NavbarProfile />
+        </div>
       </div>
     </header>
   );

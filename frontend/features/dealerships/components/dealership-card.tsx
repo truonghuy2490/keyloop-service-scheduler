@@ -26,9 +26,9 @@ export default function DealershipCard({
             <MapPin size={24} strokeWidth={2} />
           </div>
 
-          <span className="badge badge-success badge-outline px-3 py-3 text-xs font-medium">
+          {/* <span className="badge badge-success badge-outline px-3 py-3 text-xs font-medium">
             Active
-          </span>
+          </span> */}
         </div>
 
         {/* Dealership name */}
