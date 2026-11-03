@@ -12,6 +12,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository;
+import com.keyloop.scheduler.application.common.pagination.PagedList;
 import com.keyloop.scheduler.application.common.result.ErrorDetails;
 import com.keyloop.scheduler.application.common.result.Result;
 
@@ -22,9 +23,7 @@ public class Handler {
             LoggerFactory.getLogger(Handler.class);
 
     private final Validators validators;
-
     private final DealershipRepository dealershipRepository;
-
 
     public Handler(
             Validators validators,
@@ -35,7 +34,7 @@ public class Handler {
     }
 
     @Async("applicationTaskExecutor")
-    public CompletableFuture<Result<Response>> handle(Query query) {
+    public CompletableFuture<Result<PagedList<Response>>> handle(Query query) {
 
         // 1. Validate query
         var validationErrors = validators.validate(query);
@@ -49,6 +48,9 @@ public class Handler {
         }
 
         UUID dealershipId = UUID.fromString(query.dealershipId());
+
+        int pageNumber = query.pageNumber();
+        int pageSize = query.pageSize();
 
         try {
 
@@ -73,26 +75,32 @@ public class Handler {
                 );
             }
 
-            // 3. Retrieve supported service types
-            var serviceTypes =
+            // 3. Retrieve paginated service types
+            PagedList<DealershipRepository.ServiceTypeData> serviceTypes =
                     dealershipRepository.findActiveByDealershipId(
-                            dealershipId
+                            dealershipId,
+                            pageNumber,
+                            pageSize
                     );
 
-            // 4. Map response
-            List<Response.ServiceTypeItem> items =
-                    serviceTypes.stream()
-                            .map(serviceType ->
-                                    new Response.ServiceTypeItem(
-                                            serviceType.id(),
-                                            serviceType.name(),
-                                            serviceType.description(),
-                                            serviceType.durationMinutes()
-                                    )
-                            )
-                            .toList();
+            // 4. Map data to response
+            List<Response> items = serviceTypes.items()
+                    .stream()
+                    .map(serviceType -> new Response(
+                            serviceType.id(),
+                            serviceType.name(),
+                            serviceType.description(),
+                            serviceType.durationMinutes()
+                    ))
+                    .toList();
 
-            Response response = new Response(items);
+            // 5. Create paginated response
+            PagedList<Response> response = PagedList.create(
+                    items,
+                    serviceTypes.totalCount(),
+                    pageNumber,
+                    pageSize
+            );
 
             logger.info(
                     "Retrieved {} service types for dealership {}.",

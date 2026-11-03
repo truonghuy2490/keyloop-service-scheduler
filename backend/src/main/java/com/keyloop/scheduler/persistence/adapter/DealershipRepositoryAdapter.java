@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository;
+import com.keyloop.scheduler.application.common.pagination.PagedList;
 import com.keyloop.scheduler.domain.entity.Dealership;
 import com.keyloop.scheduler.persistence.entity.DealershipJpaEntity;
 import com.keyloop.scheduler.persistence.repository.DealershipJpaRepository;
@@ -178,9 +179,33 @@ public class DealershipRepositoryAdapter
 
     @Override
     @Transactional(readOnly = true)
-    public List<ServiceTypeData> findActiveByDealershipId(UUID dealershipId) {
+    public PagedList<ServiceTypeData> findActiveByDealershipId(
+            UUID dealershipId,
+            int pageNumber,
+            int pageSize) {
 
-        return jdbcTemplate.query(
+        // 1. Count total distinct service types
+        Long totalCount = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(DISTINCT st.id)
+                        FROM service_type st
+                        INNER JOIN technician_qualification tq
+                            ON tq.service_type_id = st.id
+                        INNER JOIN technician t
+                            ON t.id = tq.technician_id
+                        WHERE t.dealership_id = ?
+                          AND t.is_deleted = false
+                          AND t.active = true
+                          AND st.is_deleted = false
+                        """,
+                Long.class,
+                dealershipId);
+
+        // 2. Calculate pagination offset
+        long offset = ((long) pageNumber - 1) * pageSize;
+
+        // 3. Retrieve paginated service types
+        List<ServiceTypeData> items = jdbcTemplate.query(
                 """
                         SELECT DISTINCT
                             st.id,
@@ -196,14 +221,24 @@ public class DealershipRepositoryAdapter
                           AND t.is_deleted = false
                           AND t.active = true
                           AND st.is_deleted = false
-                        ORDER BY st.name
+                        ORDER BY st.name, st.id
+                        LIMIT ? OFFSET ?
                         """,
                 (rs, rowNum) -> new ServiceTypeData(
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
                         rs.getString("description"),
                         rs.getObject("duration_minutes", Integer.class)),
-                dealershipId);
+                dealershipId,
+                pageSize,
+                offset);
+
+        // 4. Build paginated result
+        return PagedList.create(
+                items,
+                totalCount != null ? totalCount : 0L,
+                pageNumber,
+                pageSize);
     }
 
 }

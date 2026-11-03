@@ -17,6 +17,7 @@ import org.springframework.dao.DataAccessResourceFailureException;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository;
 import com.keyloop.scheduler.application.abstraction.dataaccess.DealershipRepository.ServiceTypeData;
+import com.keyloop.scheduler.application.common.pagination.PagedList;
 import com.keyloop.scheduler.application.common.result.Error;
 import com.keyloop.scheduler.application.common.result.Result;
 import com.keyloop.scheduler.domain.entity.Dealership;
@@ -32,16 +33,22 @@ class HandlerTest {
     private UUID dealershipId;
     private Query query;
 
+    private static final int PAGE_NUMBER = 1;
+    private static final int PAGE_SIZE = 10;
+
     @BeforeEach
     void setUp() {
 
         dealershipId = UUID.randomUUID();
-        query = new Query(dealershipId.toString());
 
-        Validators validators = new Validators();
+        query = new Query(
+                dealershipId.toString(),
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
 
         handler = new Handler(
-                validators,
+                new Validators(),
                 dealershipRepository
         );
     }
@@ -70,24 +77,37 @@ class HandlerTest {
                 )
         );
 
-        when(dealershipRepository.findActiveByDealershipId(dealershipId))
-                .thenReturn(serviceTypes);
+        PagedList<ServiceTypeData> pagedServiceTypes =
+                PagedList.create(
+                        serviceTypes,
+                        2,
+                        PAGE_NUMBER,
+                        PAGE_SIZE
+                );
+
+        when(dealershipRepository.findActiveByDealershipId(
+                dealershipId,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        )).thenReturn(pagedServiceTypes);
 
         // Act
-        Result<Response> result = handler.handle(query).join();
+        Result<PagedList<Response>> result =
+                handler.handle(query).join();
 
         // Assert
         assertTrue(result.isSuccess());
 
-        Response response = getSuccessValue(result);
+        PagedList<Response> response = getSuccessValue(result);
 
         assertNotNull(response);
-        assertNotNull(response.items());
         assertEquals(2, response.items().size());
+        assertEquals(2, response.totalCount());
+        assertEquals(PAGE_NUMBER, response.pageNumber());
+        assertEquals(PAGE_SIZE, response.pageSize());
 
         // Verify first service type
-        Response.ServiceTypeItem oilChange =
-                response.items().get(0);
+        Response oilChange = response.items().get(0);
 
         assertEquals(oilChangeId, oilChange.id());
         assertEquals("Oil Change", oilChange.name());
@@ -98,14 +118,10 @@ class HandlerTest {
         assertEquals(60, oilChange.durationMinutes());
 
         // Verify second service type
-        Response.ServiceTypeItem brakeInspection =
-                response.items().get(1);
+        Response brakeInspection = response.items().get(1);
 
         assertEquals(brakeInspectionId, brakeInspection.id());
-        assertEquals(
-                "Brake Inspection",
-                brakeInspection.name()
-        );
+        assertEquals("Brake Inspection", brakeInspection.name());
         assertEquals(
                 "Brake system inspection",
                 brakeInspection.description()
@@ -114,8 +130,11 @@ class HandlerTest {
 
         verify(dealershipRepository).findById(dealershipId);
 
-        verify(dealershipRepository)
-                .findActiveByDealershipId(dealershipId);
+        verify(dealershipRepository).findActiveByDealershipId(
+                dealershipId,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
 
         verifyNoMoreInteractions(dealershipRepository);
     }
@@ -126,24 +145,166 @@ class HandlerTest {
         // Arrange
         mockActiveDealership();
 
-        when(dealershipRepository.findActiveByDealershipId(dealershipId))
-                .thenReturn(List.of());
+        PagedList<ServiceTypeData> emptyPage =
+                PagedList.create(
+                        List.of(),
+                        0,
+                        PAGE_NUMBER,
+                        PAGE_SIZE
+                );
+
+        when(dealershipRepository.findActiveByDealershipId(
+                dealershipId,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        )).thenReturn(emptyPage);
 
         // Act
-        Result<Response> result = handler.handle(query).join();
+        Result<PagedList<Response>> result =
+                handler.handle(query).join();
 
         // Assert
         assertTrue(result.isSuccess());
 
-        Response response = getSuccessValue(result);
+        PagedList<Response> response = getSuccessValue(result);
 
         assertNotNull(response.items());
         assertTrue(response.items().isEmpty());
+        assertEquals(0, response.totalCount());
+        assertEquals(PAGE_NUMBER, response.pageNumber());
+        assertEquals(PAGE_SIZE, response.pageSize());
 
         verify(dealershipRepository).findById(dealershipId);
 
-        verify(dealershipRepository)
-                .findActiveByDealershipId(dealershipId);
+        verify(dealershipRepository).findActiveByDealershipId(
+                dealershipId,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
+
+        verifyNoMoreInteractions(dealershipRepository);
+    }
+
+    @Test
+    void shouldReturnSuccessWhenRequestingSecondPage() {
+
+        // Arrange
+        mockActiveDealership();
+
+        int pageNumber = 2;
+        int pageSize = 2;
+
+        Query secondPageQuery = new Query(
+                dealershipId.toString(),
+                pageNumber,
+                pageSize
+        );
+
+        UUID serviceTypeId = UUID.randomUUID();
+
+        List<ServiceTypeData> serviceTypes = List.of(
+                new ServiceTypeData(
+                        serviceTypeId,
+                        "Tire Replacement",
+                        "Replace vehicle tires",
+                        45
+                )
+        );
+
+        PagedList<ServiceTypeData> pagedServiceTypes =
+                PagedList.create(
+                        serviceTypes,
+                        3,
+                        pageNumber,
+                        pageSize
+                );
+
+        when(dealershipRepository.findActiveByDealershipId(
+                dealershipId,
+                pageNumber,
+                pageSize
+        )).thenReturn(pagedServiceTypes);
+
+        // Act
+        Result<PagedList<Response>> result =
+                handler.handle(secondPageQuery).join();
+
+        // Assert
+        assertTrue(result.isSuccess());
+
+        PagedList<Response> response = getSuccessValue(result);
+
+        assertEquals(1, response.items().size());
+        assertEquals(3, response.totalCount());
+        assertEquals(pageNumber, response.pageNumber());
+        assertEquals(pageSize, response.pageSize());
+
+        assertEquals(
+                serviceTypeId,
+                response.items().get(0).id()
+        );
+
+        verify(dealershipRepository).findById(dealershipId);
+
+        verify(dealershipRepository).findActiveByDealershipId(
+                dealershipId,
+                pageNumber,
+                pageSize
+        );
+
+        verifyNoMoreInteractions(dealershipRepository);
+    }
+
+    @Test
+    void shouldReturnEmptyItemsWhenPageExceedsAvailablePages() {
+
+        // Arrange
+        mockActiveDealership();
+
+        int pageNumber = 10;
+        int pageSize = 10;
+
+        Query outOfRangeQuery = new Query(
+                dealershipId.toString(),
+                pageNumber,
+                pageSize
+        );
+
+        PagedList<ServiceTypeData> emptyPage =
+                PagedList.create(
+                        List.of(),
+                        3,
+                        pageNumber,
+                        pageSize
+                );
+
+        when(dealershipRepository.findActiveByDealershipId(
+                dealershipId,
+                pageNumber,
+                pageSize
+        )).thenReturn(emptyPage);
+
+        // Act
+        Result<PagedList<Response>> result =
+                handler.handle(outOfRangeQuery).join();
+
+        // Assert
+        assertTrue(result.isSuccess());
+
+        PagedList<Response> response = getSuccessValue(result);
+
+        assertTrue(response.items().isEmpty());
+        assertEquals(3, response.totalCount());
+        assertEquals(pageNumber, response.pageNumber());
+        assertEquals(pageSize, response.pageSize());
+
+        verify(dealershipRepository).findById(dealershipId);
+
+        verify(dealershipRepository).findActiveByDealershipId(
+                dealershipId,
+                pageNumber,
+                pageSize
+        );
 
         verifyNoMoreInteractions(dealershipRepository);
     }
@@ -156,16 +317,13 @@ class HandlerTest {
                 .thenReturn(Optional.empty());
 
         // Act
-        Result<Response> result = handler.handle(query).join();
+        Result<PagedList<Response>> result =
+                handler.handle(query).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.DEALERSHIP_NOT_FOUND
-        );
+        assertError(result, Errors.DEALERSHIP_NOT_FOUND);
 
         verify(dealershipRepository).findById(dealershipId);
-
         verifyNoMoreInteractions(dealershipRepository);
     }
 
@@ -181,16 +339,13 @@ class HandlerTest {
                 .thenReturn(Optional.of(dealership));
 
         // Act
-        Result<Response> result = handler.handle(query).join();
+        Result<PagedList<Response>> result =
+                handler.handle(query).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.DEALERSHIP_NOT_FOUND
-        );
+        assertError(result, Errors.DEALERSHIP_NOT_FOUND);
 
         verify(dealershipRepository).findById(dealershipId);
-
         verifyNoMoreInteractions(dealershipRepository);
     }
 
@@ -198,13 +353,11 @@ class HandlerTest {
     void shouldReturnFailureWhenQueryIsNull() {
 
         // Act
-        Result<Response> result = handler.handle(null).join();
+        Result<PagedList<Response>> result =
+                handler.handle(null).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.INVALID_QUERY
-        );
+        assertError(result, Errors.INVALID_QUERY);
 
         verifyNoInteractions(dealershipRepository);
     }
@@ -213,16 +366,18 @@ class HandlerTest {
     void shouldReturnFailureWhenDealershipIdIsInvalid() {
 
         // Arrange
-        Query invalidQuery = new Query("invalid-uuid");
+        Query invalidQuery = new Query(
+                "invalid-uuid",
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
 
         // Act
-        Result<Response> result = handler.handle(invalidQuery).join();
+        Result<PagedList<Response>> result =
+                handler.handle(invalidQuery).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.INVALID_DEALERSHIP_ID
-        );
+        assertError(result, Errors.INVALID_DEALERSHIP_ID);
 
         verifyNoInteractions(dealershipRepository);
     }
@@ -231,16 +386,18 @@ class HandlerTest {
     void shouldReturnFailureWhenDealershipIdIsNull() {
 
         // Arrange
-        Query invalidQuery = new Query(null);
+        Query invalidQuery = new Query(
+                null,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
 
         // Act
-        Result<Response> result = handler.handle(invalidQuery).join();
+        Result<PagedList<Response>> result =
+                handler.handle(invalidQuery).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.INVALID_DEALERSHIP_ID
-        );
+        assertError(result, Errors.INVALID_DEALERSHIP_ID);
 
         verifyNoInteractions(dealershipRepository);
     }
@@ -249,16 +406,58 @@ class HandlerTest {
     void shouldReturnFailureWhenDealershipIdIsBlank() {
 
         // Arrange
-        Query invalidQuery = new Query(" ");
+        Query invalidQuery = new Query(
+                " ",
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
 
         // Act
-        Result<Response> result = handler.handle(invalidQuery).join();
+        Result<PagedList<Response>> result =
+                handler.handle(invalidQuery).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.INVALID_DEALERSHIP_ID
+        assertError(result, Errors.INVALID_DEALERSHIP_ID);
+
+        verifyNoInteractions(dealershipRepository);
+    }
+
+    @Test
+    void shouldReturnFailureWhenPageNumberIsInvalid() {
+
+        // Arrange
+        Query invalidQuery = new Query(
+                dealershipId.toString(),
+                0,
+                PAGE_SIZE
         );
+
+        // Act
+        Result<PagedList<Response>> result =
+                handler.handle(invalidQuery).join();
+
+        // Assert
+        assertError(result, Errors.INVALID_PAGE_NUMBER);
+
+        verifyNoInteractions(dealershipRepository);
+    }
+
+    @Test
+    void shouldReturnFailureWhenPageSizeIsInvalid() {
+
+        // Arrange
+        Query invalidQuery = new Query(
+                dealershipId.toString(),
+                PAGE_NUMBER,
+                101
+        );
+
+        // Act
+        Result<PagedList<Response>> result =
+                handler.handle(invalidQuery).join();
+
+        // Assert
+        assertError(result, Errors.INVALID_PAGE_SIZE);
 
         verifyNoInteractions(dealershipRepository);
     }
@@ -275,16 +474,13 @@ class HandlerTest {
                 );
 
         // Act
-        Result<Response> result = handler.handle(query).join();
+        Result<PagedList<Response>> result =
+                handler.handle(query).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.SERVICE_TYPES_RETRIEVAL_FAILED
-        );
+        assertError(result, Errors.SERVICE_TYPES_RETRIEVAL_FAILED);
 
         verify(dealershipRepository).findById(dealershipId);
-
         verifyNoMoreInteractions(dealershipRepository);
     }
 
@@ -294,26 +490,30 @@ class HandlerTest {
         // Arrange
         mockActiveDealership();
 
-        when(dealershipRepository.findActiveByDealershipId(dealershipId))
-                .thenThrow(
-                        new DataAccessResourceFailureException(
-                                "Failed to retrieve service types"
-                        )
-                );
+        when(dealershipRepository.findActiveByDealershipId(
+                dealershipId,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        )).thenThrow(
+                new DataAccessResourceFailureException(
+                        "Failed to retrieve service types"
+                )
+        );
 
         // Act
-        Result<Response> result = handler.handle(query).join();
+        Result<PagedList<Response>> result =
+                handler.handle(query).join();
 
         // Assert
-        assertError(
-                result,
-                Errors.SERVICE_TYPES_RETRIEVAL_FAILED
-        );
+        assertError(result, Errors.SERVICE_TYPES_RETRIEVAL_FAILED);
 
         verify(dealershipRepository).findById(dealershipId);
 
-        verify(dealershipRepository)
-                .findActiveByDealershipId(dealershipId);
+        verify(dealershipRepository).findActiveByDealershipId(
+                dealershipId,
+                PAGE_NUMBER,
+                PAGE_SIZE
+        );
 
         verifyNoMoreInteractions(dealershipRepository);
     }
@@ -330,32 +530,35 @@ class HandlerTest {
                 .thenReturn(Optional.of(dealership));
     }
 
-    private Response getSuccessValue(Result<Response> result) {
+    @SuppressWarnings("unchecked")
+    private PagedList<Response> getSuccessValue(
+            Result<PagedList<Response>> result
+    ) {
 
         assertTrue(result.isSuccess());
 
         Result.Success<?> success =
                 (Result.Success<?>) result;
 
-        return (Response) success.value();
+        return (PagedList<Response>) success.value();
     }
 
-    private Error getFirstError(Result<Response> result) {
+    private Error getFirstError(
+            Result<PagedList<Response>> result
+    ) {
 
         assertTrue(result.isFailure());
 
         Result.Failure<?> failure =
                 (Result.Failure<?>) result;
 
-        assertFalse(
-                failure.errorDetails().errors().isEmpty()
-        );
+        assertFalse(failure.errorDetails().errors().isEmpty());
 
         return failure.errorDetails().errors().get(0);
     }
 
     private void assertError(
-            Result<Response> result,
+            Result<PagedList<Response>> result,
             Error expected
     ) {
 

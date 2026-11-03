@@ -331,6 +331,7 @@ public boolean isQualifiedForServiceType(
 }
 
     
+
 @Override
 @Transactional(readOnly = true)
 public List<Technician> findQualifiedTechnicians(
@@ -357,8 +358,9 @@ public List<Technician> findQualifiedTechnicians(
             WHERE t.dealership_id = ?
               AND tq.service_type_id = ?
               AND t.is_deleted = false
+              AND t.active = true
               AND (
-                    ? IS NULL
+                    CAST(? AS UUID) IS NULL
                     OR t.id = ?
               )
             ORDER BY t.full_name
@@ -380,6 +382,5 @@ public List<Technician> findQualifiedTechnicians(
             technicianId
     );
 }
-
 
 }

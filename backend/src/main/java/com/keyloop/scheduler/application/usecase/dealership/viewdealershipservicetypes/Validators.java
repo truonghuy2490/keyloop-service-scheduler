@@ -1,6 +1,7 @@
 
 package com.keyloop.scheduler.application.usecase.dealership.viewdealershipservicetypes;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,11 +18,21 @@ public class Validators {
             return List.of(Errors.INVALID_QUERY);
         }
 
+        List<Error> errors = new ArrayList<>();
+
         if (!isValidGuid(query.dealershipId())) {
-            return List.of(Errors.INVALID_DEALERSHIP_ID);
+            errors.add(Errors.INVALID_DEALERSHIP_ID);
         }
 
-        return List.of();
+        if (query.pageNumber() < 1) {
+            errors.add(Errors.INVALID_PAGE_NUMBER);
+        }
+
+        if (query.pageSize() < 1 || query.pageSize() > 100) {
+            errors.add(Errors.INVALID_PAGE_SIZE);
+        }
+
+        return errors;
     }
 
     private boolean isValidGuid(String value) {
@@ -33,9 +44,9 @@ public class Validators {
         try {
             UUID uuid = UUID.fromString(value);
             return uuid.toString().equalsIgnoreCase(value);
-
         } catch (IllegalArgumentException ex) {
             return false;
         }
     }
 }
+
