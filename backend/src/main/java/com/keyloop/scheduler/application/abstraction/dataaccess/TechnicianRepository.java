@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface TechnicianRepository {
+import com.keyloop.scheduler.domain.entity.Technician;
+
+public interface TechnicianRepository extends BaseRepository<Technician, UUID>   {
 
     List<TechnicianData> findDetailsByDealershipId(UUID dealershipId);
     
@@ -65,4 +67,16 @@ public interface TechnicianRepository {
             String reason
     ) {
     }
+
+        boolean isQualifiedForServiceType(
+                UUID technicianId,
+                UUID serviceTypeId
+        );
+
+        List<Technician> findQualifiedTechnicians(
+                UUID dealershipId,
+                UUID serviceTypeId,
+                UUID technicianId
+        );
+
 }

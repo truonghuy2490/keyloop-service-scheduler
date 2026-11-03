@@ -2,11 +2,17 @@ export const API_ENDPOINTS = {
   APPOINTMENTS: {
     BASE: "/appointments",
     BY_ID: (id: string) => `/appointments/${id}`,
+    AVAILABILITY: "/appointments/availability",
   },
 
   DEALERSHIPS: {
     BASE: "/dealerships",
-    BY_ID: (dealershipId: string) => `/dealerships/${dealershipId}`,
+
+    BY_ID: (id: string) => `/dealerships/${id}`,
+
+    SERVICE_TYPES: (dealershipId: string) =>
+      `/dealerships/${dealershipId}/service-types`,
+
     TECHNICIANS: (dealershipId: string) =>
       `/dealerships/${dealershipId}/technicians`,
   },
@@ -24,11 +30,6 @@ export const API_ENDPOINTS = {
 
   VEHICLES: {
     BASE: "/vehicles",
-  },
-
-  SERVICE_TYPES: {
-    BASE: "/service-types",
-    BY_ID: (id: string) => `/service-types/${id}`,
   },
 
   CUSTOMERS: {

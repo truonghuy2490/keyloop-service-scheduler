@@ -1,5 +1,6 @@
 package com.keyloop.scheduler.application.abstraction.dataaccess;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.keyloop.scheduler.application.common.pagination.PagedList;
@@ -12,5 +13,9 @@ public interface ServiceBayRepository
             UUID dealershipId,
             int pageNumber,
             int pageSize
+    );
+
+    List<ServiceBay> findActiveByDealershipId(
+            UUID dealershipId
     );
 }

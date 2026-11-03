@@ -4,7 +4,7 @@ name: Backend CI
   push:
     branches:
       - main
-      - feature/ci-backend
+      - 'feature/**'
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
@@ -25,6 +25,7 @@ jobs:
   backend-ci:
     name: Backend CI - Spring Boot
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     defaults:
       run:
@@ -44,39 +45,41 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
 
-      # 3. Build, test and generate coverage
+      # 3. Build, Unit Test and Integration Test
       - name: Build and test
         run: |
           chmod +x mvnw
           ./mvnw --batch-mode --no-transfer-progress clean verify
 
-      # 4. Check and Upload test results
-      - name: Check JaCoCo report
+      # 4. Check JaCoCo reports
+      - name: Check JaCoCo reports
         if: always()
         run: |
           echo "Checking JaCoCo reports..."
           find . -name "jacoco.xml" -type f
           find . -name "jacoco.exec" -type f
 
+      # 5. Upload Unit Test and Integration Test reports
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-reports
-          path: backend/target/surefire-reports/
-          if-no-files-found: ignore
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+          if-no-files-found: warn
 
-
-      # 5. Upload JaCoCo coverage report
+      # 6. Upload JaCoCo report
       - name: Upload JaCoCo coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
           path: backend/target/site/jacoco/
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
-      # 6. Upload coverage to Codecov
+      # 7. Upload coverage to Codecov
       - name: Upload coverage to Codecov
         if: success()
         uses: codecov/codecov-action@v5
