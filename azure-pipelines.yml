@@ -79,7 +79,7 @@ stages:
               targetPath: '$(Build.ArtifactStagingDirectory)/backend'
               artifact: backend-package
               publishLocation: pipeline
-
+ 
   # ==========================================
   # STAGE 2: DEPLOY TO AZURE APP SERVICE
   # ==========================================
@@ -89,64 +89,65 @@ stages:
     condition: succeeded()
 
     jobs:
-      - deployment: DeployBackend
+      - job: DeployBackend
         displayName: Deploy Spring Boot Application
-        environment: development
 
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - download: current
-                  artifact: backend-package
+        steps:
+          # Download JAR from Build stage
+          - download: current
+            artifact: backend-package
 
-                - script: |
-                    set -eu
+          # Verify artifact
+          - script: |
+              set -eu
 
-                    JAR_FILE="$(Pipeline.Workspace)/backend-package/app.jar"
+              JAR_FILE="$(Pipeline.Workspace)/backend-package/app.jar"
 
-                    if [ ! -s "$JAR_FILE" ]; then
-                      echo "ERROR: Backend JAR not found."
-                      exit 1
-                    fi
+              if [ ! -s "$JAR_FILE" ]; then
+                echo "ERROR: Backend JAR not found."
+                exit 1
+              fi
 
-                    echo "Backend JAR found:"
-                    ls -lh "$JAR_FILE"
-                  displayName: Verify Backend Artifact
+              echo "Backend artifact:"
+              ls -lh "$JAR_FILE"
+            displayName: Verify Backend Artifact
 
-                - task: AzureWebApp@1
-                  displayName: Deploy to Azure App Service
-                  inputs:
-                    azureSubscription: 'sc-service-scheduler-azure'
-                    appType: 'webAppLinux'
-                    appName: 'service-scheduler-demo-huy'
-                    package: '$(Pipeline.Workspace)/backend-package/app.jar'
-                    runtimeStack: 'JAVA|21-java21'
+          # Deploy to existing Azure App Service
+          - task: AzureWebApp@1
+            displayName: Deploy Spring Boot JAR
+            inputs:
+              azureSubscription: 'sc-service-scheduler-azure'
+              appType: 'webAppLinux'
+              appName: 'service-scheduler-demo-huy'
+              package: '$(Pipeline.Workspace)/backend-package/app.jar'
 
-                - script: |
-                    set -eu
+          # Verify deployment
+          - script: |
+              set -eu
 
-                    URL="https://service-scheduler-demo-huy.azurewebsites.net/actuator/health"
+              URL="https://service-scheduler-demo-huy-dyhnh7c5c6hde4en.swedencentral-01.azurewebsites.net/actuator/health"
 
-                    echo "Waiting for Spring Boot startup..."
+              echo "Checking backend health..."
 
-                    for i in $(seq 1 12); do
-                      if curl --fail --silent --show-error \
-                        --max-time 20 "$URL" \
-                        -o /tmp/health.json; then
+              for i in $(seq 1 18); do
+                HTTP_CODE=$(curl --silent --show-error \
+                  --max-time 20 \
+                  --output /tmp/health.json \
+                  --write-out "%{http_code}" \
+                  "$URL") || HTTP_CODE="000"
 
-                        cat /tmp/health.json
+                echo "Attempt $i: HTTP $HTTP_CODE"
 
-                        if grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health.json; then
-                          echo "Backend is healthy."
-                          exit 0
-                        fi
-                      fi
+                if [ "$HTTP_CODE" = "200" ] && \
+                   grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health.json; then
+                  echo "Backend deployment successful."
+                  cat /tmp/health.json
+                  exit 0
+                fi
 
-                      echo "Attempt $i failed. Retrying in 15 seconds..."
-                      sleep 15
-                    done
+                sleep 15
+              done
 
-                    echo "ERROR: Backend health check failed."
-                    exit 1
-                  displayName: Verify Backend Health
+              echo "ERROR: Backend health check failed."
+              exit 1
+            displayName: Verify Backend Health
