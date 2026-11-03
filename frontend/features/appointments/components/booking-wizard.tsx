@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useAppDispatch } from "@/lib/redux/hooks";
+import { enqueueToast, ToastType } from "@/features/shared/toast.slice";
 import {
     ArrowLeft,
     ArrowRight,
@@ -303,6 +305,7 @@ export default function BookingWizard({
     vehicleId,
     onBookingSuccess,
 }: BookingWizardProps) {
+    const dispatch = useAppDispatch();
     const [flow, setFlow] = useState<BookingFlow | null>(null);
     const [stepIndex, setStepIndex] = useState(0);
 
@@ -339,6 +342,19 @@ export default function BookingWizard({
                 (qualification) => qualification.serviceTypeId,
             )
             : undefined;
+
+    function handleBookingSuccess(appointmentId: string) {
+        dispatch(
+            enqueueToast({
+                type: ToastType.Success,
+                message: "Your appointment has been booked successfully!",
+                duration: 4000,
+                testId: "booking-success-toast",
+            }),
+        );
+
+        onBookingSuccess?.(appointmentId);
+    }
 
     function selectFlow(selectedFlow: BookingFlow) {
         setFlow(selectedFlow);
@@ -645,7 +661,7 @@ export default function BookingWizard({
                         selectedDate={booking.selectedDate}
                         startTime={booking.startTime}
                         onBack={previousStep}
-                        onSuccess={onBookingSuccess}
+                        onSuccess={handleBookingSuccess}
                     />
                 )}
 

@@ -52,7 +52,7 @@ export default function LandingHero() {
                         </Link>
 
                         <Link
-                            href="#dealerships"
+                            href="/dealerships"
                             className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full border border-white/40 bg-white/10 px-7 py-3 font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
                         >
                             <MapPin size={18} />

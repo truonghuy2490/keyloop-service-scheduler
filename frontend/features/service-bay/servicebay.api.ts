@@ -1,4 +1,4 @@
-import { baseApiSlice } from "@/lib/api/base-api";
+import { baseApiSlice } from "@/lib/api/base.api";
 import { API_ENDPOINTS } from "@/lib/api/endpoints";
 import type { PagedList, PaginationRequest } from "@/lib/api/base.types";
 import type { ServiceBay } from "./servicebay.types";

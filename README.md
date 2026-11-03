@@ -216,18 +216,57 @@ The Azure pipeline builds/tests the backend, packages the Spring Boot JAR, publi
 
 **Deployment status:** The current Azure stage is a simulation; it does not provision live Azure resources or deploy the application.
 
-## Known Limitations and Next Steps
+## Troubleshooting
 
+### PostgreSQL connection fails with `TimeZone: "Asia/Saigon"` (Windows / VS Code)
+
+When launching the Spring Boot backend from VS Code on Windows, Flyway may fail during database initialization with an error similar to:
+
+```text
+Caused by: org.flywaydb.core.internal.exception.sqlExceptions.FlywaySqlUnableToConnectToDbException:
+Unable to obtain connection from database: FATAL: invalid value for parameter "TimeZone": "Asia/Saigon"
+SQL State  : 22023
+Error Code : 0
+Message    : FATAL: invalid value for parameter "TimeZone": "Asia/Saigon"
+```
+
+**Why this happens:** The JVM or PostgreSQL JDBC driver may pass the time zone identifier `Asia/Saigon` to PostgreSQL when establishing a connection. If the target PostgreSQL instance does not recognize that identifier, it rejects the connection. Flyway reports the failure because it attempts to connect during application startup; it is not necessarily a migration problem.
+
+**Workaround (PowerShell):** In the VS Code integrated terminal, set the JVM time zone to UTC **before starting the backend**:
+
+```powershell
+$env:JAVA_TOOL_OPTIONS = "-Duser.timezone=UTC"
+java -XshowSettings:properties -version 2>&1 | Select-String "user.timezone"
+```
+
+The second command verifies that Java reports `user.timezone = UTC`; it does not change any settings itself. Then launch the backend **from that same terminal**:
+
+```powershell
+cd backend  # Skip if already in the backend directory
+.\mvnw.cmd spring-boot:run
+```
+
+PowerShell environment variables set with `$env:` apply to the current terminal process and its child processes. New terminals or VS Code Run/Debug sessions may not inherit this setting. If using the VS Code Java debugger, configure the launch profile with a JVM argument such as `-Duser.timezone=UTC`, or ensure the launch process inherits the environment variable.
+
+**Important:** This workaround changes the JVM's default time zone, not the PostgreSQL server's time zone. It is separate from `spring.jpa.properties.hibernate.jdbc.time_zone=UTC` and does not replace correct handling of `Instant`, UTC timestamps, or dealership-local time zones in booking logic. For a longer-term fix, check the JVM's detected default time zone, JDBC driver version, and PostgreSQL server's supported time zone names. Use `Asia/Ho_Chi_Minh` for explicit Vietnam-local time zone configuration where supported.
+
+To clear the workaround in the current PowerShell terminal:
+
+```powershell
+Remove-Item Env:JAVA_TOOL_OPTIONS
+```
+
+## Known Limitations and Next Steps
 - Improve conflict handling to return a resource-specific response rather than a generic appointment creation error when a database exclusion constraint rejects a concurrent booking.
+
 - Consider resource locking or a bounded retry strategy so concurrent bookings can use another available service bay.
+
 - Confirm and document the appointment details endpoint and any additional status/cancellation APIs as they are completed.
 
 ## AI Collaboration
-
 AI tools were used to support technical research, architecture discussions, code review, test-case generation, debugging, and documentation. Design decisions and changes were evaluated and implemented as part of the development process.
 
 See [AI Collaboration Narrative](docs/ai-collaboration.md).
 
 ## License
-
 Developed for learning and technical demonstration purposes.

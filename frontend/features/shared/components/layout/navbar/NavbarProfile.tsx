@@ -8,6 +8,11 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { setCurrentCustomer } from "@/features/customer/customer.slice";
 import { useGetCustomersQuery } from "@/features/customer/customer.api";
 
+import {
+  enqueueToast,
+  ToastType,
+} from "@/features/shared/toast.slice";
+
 export default function NavbarProfile() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -68,10 +73,29 @@ export default function NavbarProfile() {
       (customer) => customer.id === customerId,
     );
 
-    if (selectedCustomer) {
-      dispatch(setCurrentCustomer(selectedCustomer));
+    if (!selectedCustomer) return;
+
+    // Close dropdown without notification if already selected
+    if (currentCustomer?.id === selectedCustomer.id) {
       setIsOpen(false);
+      return;
     }
+
+    // Update current customer
+    dispatch(setCurrentCustomer(selectedCustomer));
+
+    // Close dropdown
+    setIsOpen(false);
+
+    // Show success notification
+    dispatch(
+      enqueueToast({
+        type: ToastType.Success,
+        message: `Successfully switched to ${selectedCustomer.fullName}!`,
+        duration: 3000,
+        testId: "customer-profile-success-toast",
+      }),
+    );
   };
 
   return (
@@ -104,9 +128,8 @@ export default function NavbarProfile() {
 
           <ChevronDown
             size={16}
-            className={`transition-transform duration-200 ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+              }`}
           />
         </div>
       </button>
@@ -153,11 +176,10 @@ export default function NavbarProfile() {
                   <button
                     type="button"
                     onClick={() => handleSwitchCustomer(customer.id)}
-                    className={`flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-base-200"
-                    }`}
+                    className={`flex items-center justify-between gap-3 ${isSelected
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-base-200"
+                      }`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">

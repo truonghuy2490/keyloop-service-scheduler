@@ -28,6 +28,18 @@ import type {
   SelectableServiceType,
 } from "./service-type-selector";
 
+import { useAppDispatch } from "@/lib/redux/hooks";
+
+import {
+  enqueueToast,
+  ToastType,
+} from "@/features/shared/toast.slice";
+
+import {
+  getApiErrorMessage,
+  getApiErrorCode,
+} from "@/lib/api/error.utils";
+
 interface BookingConfirmationProps {
   customerId: string;
   vehicleId: string;
@@ -167,31 +179,58 @@ export default function BookingConfirmation({
     dealership.timeZone,
   );
 
-  async function handleConfirm() {
-    if (isLoading || createdAppointment) return;
+  const dispatch = useAppDispatch();
 
-    setErrorMessage(null);
+  
+async function handleConfirm() {
+  if (isLoading || createdAppointment) return;
 
-    const request: CreateAppointmentRequest = {
-      customerId,
-      vehicleId,
-      dealershipId: dealership.id,
-      serviceTypeId: serviceType.id,
-      technicianId: technician.id,
-      startTime,
-    };
+  setErrorMessage(null);
 
-    try {
-      const response = await createAppointment(
-        request,
-      ).unwrap();
+  const request: CreateAppointmentRequest = {
+    customerId,
+    vehicleId,
+    dealershipId: dealership.id,
+    serviceTypeId: serviceType.id,
+    technicianId: technician.id,
+    startTime,
+  };
 
-      setCreatedAppointment(response);
-      onSuccess?.(response.id);
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+  try {
+    const response = await createAppointment(request).unwrap();
+
+    setCreatedAppointment(response);
+
+    // Success toast is handled by BookingWizard
+    onSuccess?.(response.id);
+
+  } catch (error: unknown) {
+    const message = getApiErrorMessage(error);
+    const errorCode = getApiErrorCode(error);
+
+    // Display inline error
+    setErrorMessage(message);
+
+    // Display error toast
+    dispatch(
+      enqueueToast({
+        type: ToastType.Error,
+        message,
+        duration: 5000,
+        testId: "booking-error-toast",
+      }),
+    );
+
+    // Log detailed error in development only
+    if (process.env.NODE_ENV === "development") {
+      console.error("Booking appointment failed:", {
+        errorCode,
+        error,
+      });
     }
   }
+}
+
 
   if (createdAppointment) {
     const appointment = createdAppointment;
