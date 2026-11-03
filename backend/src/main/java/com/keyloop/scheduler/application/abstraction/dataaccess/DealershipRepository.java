@@ -43,4 +43,16 @@ public interface DealershipRepository
             long technicianCount,
             long serviceCount
     ) {}
+
+    List<ServiceTypeData> findActiveByDealershipId(
+            UUID dealershipId
+    );
+
+    record ServiceTypeData(
+            UUID id,
+            String name,
+            String description,
+            Integer durationMinutes
+    ) {
+    }
 }
