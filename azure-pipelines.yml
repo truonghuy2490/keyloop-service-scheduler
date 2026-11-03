@@ -1,8 +1,3 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
-
 
 trigger:
   branches:
@@ -17,7 +12,9 @@ pool:
   vmImage: ubuntu-latest
 
 stages:
-  # STAGE 1: CI - BUILD AND TEST BACKEND
+  # ==========================================
+  # STAGE 1: BUILD AND TEST BACKEND
+  # ==========================================
   - stage: Build
     displayName: Build Backend
 
@@ -28,7 +25,6 @@ stages:
         steps:
           - checkout: self
 
-          # Setup Java 21
           - task: JavaToolInstaller@0
             displayName: Set up Java 21
             inputs:
@@ -36,47 +32,47 @@ stages:
               jdkArchitectureOption: x64
               jdkSourceOption: PreInstalled
 
-          # Run Maven build, unit tests and JaCoCo check
           - script: |
+              set -eu
               java -version
               chmod +x mvnw
               ./mvnw --batch-mode --no-transfer-progress clean verify
             workingDirectory: backend
             displayName: Run Maven Build and Tests
 
-          # Verify generated Spring Boot JAR
           - script: |
-              echo "=== Backend target directory ==="
-              ls -lah target
-
+              set -eu
               echo "=== Generated JAR files ==="
               find target -maxdepth 1 -type f -name '*.jar' -print
             workingDirectory: backend
             displayName: Verify Spring Boot JAR
 
-          # Prepare JAR artifact
           - script: |
               set -eu
 
-              mkdir -p "$(Build.ArtifactStagingDirectory)/backend"
+              ARTIFACT_DIR="$(Build.ArtifactStagingDirectory)/backend"
+              mkdir -p "$ARTIFACT_DIR"
 
-              JAR_FILE=$(find target -maxdepth 1 -type f \
-                -name '*.jar' ! -name '*.original' | head -n 1)
+              JAR_FILE=$(find target -maxdepth 1 \
+                -type f \
+                -name '*.jar' \
+                ! -name '*.original' \
+                ! -name '*-sources.jar' \
+                ! -name '*-javadoc.jar' \
+                | head -n 1)
 
               if [ -z "$JAR_FILE" ]; then
                 echo "ERROR: Spring Boot JAR not found."
                 exit 1
               fi
 
-              cp "$JAR_FILE" \
-                "$(Build.ArtifactStagingDirectory)/backend/app.jar"
+              cp "$JAR_FILE" "$ARTIFACT_DIR/app.jar"
 
               echo "Artifact prepared successfully."
-              ls -lh "$(Build.ArtifactStagingDirectory)/backend"
+              ls -lh "$ARTIFACT_DIR/app.jar"
             workingDirectory: backend
             displayName: Prepare Backend Artifact
 
-          # Publish JAR artifact
           - task: PublishPipelineArtifact@1
             displayName: Publish Backend Artifact
             inputs:
@@ -84,76 +80,73 @@ stages:
               artifact: backend-package
               publishLocation: pipeline
 
-  
-# STAGE 2: CD - DEPLOY TO AZURE APP SERVICE
-- stage: Deploy
-  displayName: Deploy Backend to Azure
-  dependsOn: Build
-  condition: succeeded()
+  # ==========================================
+  # STAGE 2: DEPLOY TO AZURE APP SERVICE
+  # ==========================================
+  - stage: Deploy
+    displayName: Deploy Backend to Azure
+    dependsOn: Build
+    condition: succeeded()
 
-  jobs:
-    - deployment: DeployBackend
-      displayName: Deploy Spring Boot Application
-      environment: development
+    jobs:
+      - deployment: DeployBackend
+        displayName: Deploy Spring Boot Application
+        environment: development
 
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              # 1. Download artifact from Build stage
-              - download: current
-                artifact: backend-package
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: backend-package
 
-              # 2. Verify deployment artifact
-              - script: |
-                  set -eu
+                - script: |
+                    set -eu
 
-                  JAR_FILE="$(Pipeline.Workspace)/backend-package/app.jar"
+                    JAR_FILE="$(Pipeline.Workspace)/backend-package/app.jar"
 
-                  if [ ! -s "$JAR_FILE" ]; then
-                    echo "ERROR: Backend JAR not found."
-                    exit 1
-                  fi
-
-                  echo "Backend JAR found:"
-                  ls -lh "$JAR_FILE"
-                displayName: Verify Backend Artifact
-
-              # 3. Deploy JAR to Azure App Service
-              - task: AzureWebApp@1
-                displayName: Deploy to Azure App Service
-                inputs:
-                  azureSubscription: 'sc-service-scheduler-azure'
-                  appType: 'webAppLinux'
-                  appName: 'service-scheduler-demo-huy'
-                  package: '$(Pipeline.Workspace)/backend-package/app.jar'
-                  deploymentMethod: 'auto'
-
-              # 4. Verify deployed application
-              - script: |
-                  set -eu
-
-                  URL="https://service-scheduler-demo-huy.azurewebsites.net/actuator/health"
-
-                  echo "Waiting for Spring Boot startup..."
-
-                  for i in $(seq 1 12); do
-                    if curl --fail --silent --show-error \
-                      --max-time 20 "$URL" \
-                      -o /tmp/health.json; then
-
-                      cat /tmp/health.json
-
-                      if grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health.json; then
-                        echo "Backend is healthy."
-                        exit 0
-                      fi
+                    if [ ! -s "$JAR_FILE" ]; then
+                      echo "ERROR: Backend JAR not found."
+                      exit 1
                     fi
 
-                    echo "Attempt $i failed. Retrying in 15 seconds..."
-                    sleep 15
-                  done
+                    echo "Backend JAR found:"
+                    ls -lh "$JAR_FILE"
+                  displayName: Verify Backend Artifact
 
-                  echo "ERROR: Backend health check failed."
-                  exit 1
-                displayName: Verify Backend Health
+                - task: AzureWebApp@1
+                  displayName: Deploy to Azure App Service
+                  inputs:
+                    azureSubscription: 'sc-service-scheduler-azure'
+                    appType: 'webAppLinux'
+                    appName: 'service-scheduler-demo-huy'
+                    package: '$(Pipeline.Workspace)/backend-package/app.jar'
+                    runtimeStack: 'JAVA|21-java21'
+
+                - script: |
+                    set -eu
+
+                    URL="https://service-scheduler-demo-huy.azurewebsites.net/actuator/health"
+
+                    echo "Waiting for Spring Boot startup..."
+
+                    for i in $(seq 1 12); do
+                      if curl --fail --silent --show-error \
+                        --max-time 20 "$URL" \
+                        -o /tmp/health.json; then
+
+                        cat /tmp/health.json
+
+                        if grep -Eq '"status"[[:space:]]*:[[:space:]]*"UP"' /tmp/health.json; then
+                          echo "Backend is healthy."
+                          exit 0
+                        fi
+                      fi
+
+                      echo "Attempt $i failed. Retrying in 15 seconds..."
+                      sleep 15
+                    done
+
+                    echo "ERROR: Backend health check failed."
+                    exit 1
+                  displayName: Verify Backend Health
