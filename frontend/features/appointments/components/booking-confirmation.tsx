@@ -59,7 +59,7 @@ function formatDate(
   return new Intl.DateTimeFormat("en-US", {
     timeZone,
     weekday: "long",
-    month: "long",
+    // month: "long",
     day: "numeric",
     year: "numeric",
   }).format(new Date(`${date}T12:00:00Z`));
