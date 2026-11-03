@@ -435,7 +435,7 @@ public class Handler {
 
                         // Build appointment
                         Appointment appointment = Appointment.builder()
-                                        .id(UUID.randomUUID())
+                                        // .id(UUID.randomUUID())
                                         .customerId(customerId)
                                         .vehicleId(vehicleId)
                                         .dealershipId(dealershipId)

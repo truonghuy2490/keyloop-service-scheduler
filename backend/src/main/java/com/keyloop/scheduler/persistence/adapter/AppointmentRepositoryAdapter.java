@@ -4,6 +4,9 @@ import com.keyloop.scheduler.application.abstraction.dataaccess.AppointmentRepos
 import com.keyloop.scheduler.domain.entity.Appointment;
 import com.keyloop.scheduler.persistence.entity.AppointmentJpaEntity;
 import com.keyloop.scheduler.persistence.repository.AppointmentJpaRepository;
+
+import jakarta.transaction.Transactional;
+
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -33,8 +36,7 @@ public class AppointmentRepositoryAdapter
         return appointmentRepository.existsTechnicianOverlap(
                 technicianId,
                 startTime,
-                endTime
-        );
+                endTime);
     }
 
     @Override
@@ -46,8 +48,7 @@ public class AppointmentRepositoryAdapter
         return appointmentRepository.existsServiceBayOverlap(
                 serviceBayId,
                 startTime,
-                endTime
-        );
+                endTime);
     }
 
     @Override
@@ -108,17 +109,51 @@ public class AppointmentRepositoryAdapter
     public List<Appointment> findActiveAppointmentsByDealershipAndTimeRange(
             UUID dealershipId,
             Instant startTime,
-            Instant endTime
-    ) {
+            Instant endTime) {
         return appointmentRepository
                 .findActiveAppointmentsByDealershipAndTimeRange(
                         dealershipId,
                         startTime,
-                        endTime
-                )
+                        endTime)
                 .stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public Appointment save(Appointment source) {
+
+        if (source == null) {
+            throw new IllegalArgumentException(
+                    "Appointment cannot be null");
+        }
+
+        // New appointment: Hibernate generates ID and version.
+        if (source.getVersion() == null) {
+
+            AppointmentJpaEntity entity = AppointmentJpaEntity.builder()
+                    .deleted(source.getIsDeleted())
+                    .customerId(source.getCustomerId())
+                    .vehicleId(source.getVehicleId())
+                    .dealershipId(source.getDealershipId())
+                    .serviceTypeId(source.getServiceTypeId())
+                    .technicianId(source.getTechnicianId())
+                    .serviceBayId(source.getServiceBayId())
+                    .startTime(source.getStartTime())
+                    .endTime(source.getEndTime())
+                    .status(source.getStatus())
+                    .cancellationReason(
+                            source.getCancellationReason())
+                    .build();
+
+            AppointmentJpaEntity saved = appointmentRepository.saveAndFlush(entity);
+
+            return toDomain(saved);
+        }
+
+        // Existing appointment: retain ID and version.
+        return super.save(source);
     }
 
 }
