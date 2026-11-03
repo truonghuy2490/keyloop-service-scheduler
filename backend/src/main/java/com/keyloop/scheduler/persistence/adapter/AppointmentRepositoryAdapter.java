@@ -1,17 +1,22 @@
 package com.keyloop.scheduler.persistence.adapter;
 
 import com.keyloop.scheduler.application.abstraction.dataaccess.AppointmentRepository;
+import com.keyloop.scheduler.application.common.pagination.PagedList;
 import com.keyloop.scheduler.domain.entity.Appointment;
 import com.keyloop.scheduler.persistence.entity.AppointmentJpaEntity;
 import com.keyloop.scheduler.persistence.repository.AppointmentJpaRepository;
 
 import jakarta.transaction.Transactional;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 
 @Repository
 public class AppointmentRepositoryAdapter
@@ -156,4 +161,35 @@ public class AppointmentRepositoryAdapter
         return super.save(source);
     }
 
+    @Override
+    public PagedList<Appointment> findAllByCustomerId(
+            UUID customerId,
+            int pageNumber,
+            int pageSize) {
+
+        // 1. Configure pagination
+        PageRequest pageable = PageRequest.of(
+                pageNumber - 1,
+                pageSize,
+                Sort.by(Sort.Direction.DESC, "startTime")
+                        .and(Sort.by(Sort.Direction.DESC, "id")));
+
+        // 2. Retrieve appointments
+        Page<AppointmentJpaEntity> page = appointmentRepository.findByCustomerIdAndDeletedFalse(
+                customerId,
+                pageable);
+
+        // 3. Map Persistence to Domain
+        List<Appointment> appointments = page.getContent()
+                .stream()
+                .map(this::toDomain)
+                .toList();
+
+        // 4. Return paginated result
+        return PagedList.create(
+                appointments,
+                page.getTotalElements(),
+                pageNumber,
+                pageSize);
+    }
 }
