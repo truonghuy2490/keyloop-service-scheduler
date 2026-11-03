@@ -79,7 +79,7 @@ The application uses a versioned API path, such as `/api/1.0` (represented as `/
 | GET | `/api/1.0/technicians/{id}` | View technician details and schedule | Completed |
 | GET | `/api/1.0/appointments/availability` | Check availability by dealership, service type, and date | Completed |
 | POST | `/api/1.0/appointments` | Create an appointment | Completed |
-| GET | `/api/1.0/appointments/{id}` | View appointment details | Planned / verify implementation |
+| GET | `/api/1.0/appointments/{id}` | View appointment details | Completed |
 
 > Endpoint paths and implementation status reflect the current working draft. Confirm exact paths against Swagger, particularly the service bay and technician routes, before publishing.
 
